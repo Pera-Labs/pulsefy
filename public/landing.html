@@ -3,266 +3,457 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>pulsefy — alerts for every event, from every app</title>
+<title>Pulsefy — live event pulse for indie apps</title>
 <meta name="description" content="Wire any app event to Telegram, Slack, or webhooks in minutes. Rule-based alerting for indie developers."/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a12;
-    --bg-2: #12121e;
-    --panel: #1a1a26;
-    --border: rgba(255,255,255,0.08);
-    --border-strong: rgba(255,255,255,0.14);
-    --ink: #f8f8fc;
-    --ink-2: #c8c8d4;
-    --muted: #7c7c92;
-    --accent: #ff7a1f;
-    --accent-2: #ffb84d;
-    --accent-soft: #ff7a1f20;
-    --red: #ef4444;
-    --yellow: #eab308;
-    --green: #22c55e;
-    --grid-gap: 20px;
+  :root{
+    --accent:#C6F24E; --bg:#08090B; --panel:#101216; --panel-2:#0C0E12;
+    --border:rgba(255,255,255,.08); --ink:#EAECEF; --ink-2:#B7BCC5;
+    --muted:#767B85; --muted-2:#5D626B; --red:#FF6B78; --orange:#FF8A3D;
+    --blue:#6FB5FF; --yellow:#E9C46A;
   }
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { margin: 0; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
-  a { color: inherit; text-decoration: none; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{color:#dcff7a}
+  ::selection{background:var(--accent);color:var(--bg)}
+  .mono{font-family:'IBM Plex Mono',monospace}
+  @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  @keyframes feedscroll{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+  @keyframes ekgsweep{from{stroke-dashoffset:0}to{stroke-dashoffset:-1400}}
+  @keyframes blink{0%,60%{opacity:1}80%,100%{opacity:.25}}
+  @keyframes toastin{0%{opacity:0;transform:translateY(10px) scale(.96)}12%,88%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-8px) scale(.98)}}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 
-  /* nav */
-  nav { position: sticky; top: 0; z-index: 20; padding: 18px 40px; background: rgba(10,10,18,0.75); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; letter-spacing: -0.3px; }
-  nav .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)} }
-  nav .links { display: flex; align-items: center; gap: 24px; font-size: 14px; }
-  nav .links a { color: var(--muted); font-weight: 500; transition: color 0.2s; }
-  nav .links a:hover { color: var(--ink); }
-  nav .cta { padding: 8px 16px; background: var(--accent); color: white; border-radius: 8px; font-weight: 600; font-size: 14px; }
-  nav .cta:hover { background: var(--accent-2); color: var(--bg); }
+  .bg-wrap{position:relative;min-height:100%;
+    background:
+      radial-gradient(900px 500px at 78% -8%, rgba(198,242,78,.10), transparent 60%),
+      radial-gradient(700px 500px at 6% 8%, rgba(42,171,238,.08), transparent 55%),
+      var(--bg);
+    background-attachment:fixed;}
+  .grid-overlay{position:absolute;inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+    background-size:56px 56px;pointer-events:none;
+    -webkit-mask-image:radial-gradient(circle at 50% 12%, #000 30%, transparent 78%);
+    mask-image:radial-gradient(circle at 50% 12%, #000 30%, transparent 78%);}
 
-  /* container */
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+  nav{position:relative;z-index:5;max-width:1200px;margin:0 auto;padding:26px 24px;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand-badge{width:30px;height:30px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 0 22px rgba(198,242,78,.55)}
+  .brand-name{font-weight:700;font-size:19px;letter-spacing:-.3px}
+  .nav-links{display:flex;align-items:center;gap:30px;font-size:14.5px;color:var(--ink-2)}
+  .nav-links a{color:var(--ink-2)}
+  .nav-right{display:flex;align-items:center;gap:14px}
+  .nav-right a.signin{color:var(--ink-2);font-size:14.5px}
+  .btn-accent{background:var(--accent);color:var(--bg);font-weight:600;padding:9px 17px;border-radius:10px;font-size:14.5px}
 
-  /* hero */
-  .hero { padding: 100px 0 80px; text-align: center; position: relative; overflow: hidden; }
-  .hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at top, var(--accent-soft), transparent 60%); pointer-events: none; }
-  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 100px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 24px; position: relative; }
-  .badge .green { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
-  h1.hero-title { font-size: 68px; line-height: 1.05; font-weight: 900; letter-spacing: -2.5px; margin: 0 0 20px; max-width: 780px; margin-left: auto; margin-right: auto; position: relative; }
-  h1.hero-title .grad { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .hero-sub { font-size: 20px; color: var(--ink-2); max-width: 620px; margin: 0 auto 40px; position: relative; }
-  .hero-ctas { display: flex; gap: 12px; justify-content: center; position: relative; }
-  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 22px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 0; cursor: pointer; transition: transform 0.15s, background 0.15s; }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-primary:hover { background: var(--accent-2); color: var(--bg); transform: translateY(-1px); }
-  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--ink); }
-  .btn-ghost:hover { border-color: var(--ink-2); }
+  header.hero{position:relative;z-index:2;max-width:1200px;margin:0 auto;padding:52px 24px 40px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:9px;padding:6px 13px;border:1px solid rgba(255,255,255,.11);border-radius:100px;font-size:12.5px;color:var(--ink-2);animation:rise .6s both}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 9px var(--accent);animation:blink 1.4s infinite}
+  h1.hero-title{font-size:60px;line-height:1.02;letter-spacing:-2px;font-weight:700;margin-top:22px;animation:rise .6s .06s both}
+  h1.hero-title .accent{color:var(--accent)}
+  .hero-sub{font-size:18.5px;line-height:1.55;color:#A2A7B0;max-width:490px;margin-top:20px;animation:rise .6s .12s both}
+  .hero-sub code{font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--ink);background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px}
+  .hero-ctas{display:flex;gap:13px;margin-top:30px;animation:rise .6s .18s both}
+  .btn-primary{background:var(--accent);color:var(--bg);font-weight:600;font-size:15.5px;padding:14px 24px;border-radius:12px;box-shadow:0 8px 30px rgba(198,242,78,.28)}
+  .btn-ghost{border:1px solid rgba(255,255,255,.14);color:var(--ink);font-weight:500;font-size:15.5px;padding:14px 24px;border-radius:12px}
+  .hero-stats{display:flex;align-items:center;gap:20px;margin-top:28px;font-size:12.5px;color:var(--muted);animation:rise .6s .24s both}
+  .hero-stats span.sep{opacity:.4}
 
-  /* code preview */
-  .code-preview { max-width: 700px; margin: 60px auto 0; background: var(--bg-2); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; text-align: left; font-family: 'SF Mono', ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.7; position: relative; }
-  .code-preview .lang { position: absolute; top: 12px; right: 16px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
-  .kw { color: #c084fc; }
-  .str { color: #86efac; }
-  .num { color: #fbbf24; }
-  .fn { color: #60a5fa; }
-  .cmt { color: var(--muted); font-style: italic; }
+  .monitor-card{animation:rise .7s .1s both}
+  .monitor-inner{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid rgba(255,255,255,.09);border-radius:20px;overflow:hidden;box-shadow:0 40px 90px -30px rgba(0,0,0,.8)}
+  .monitor-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .monitor-head .left{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-2)}
+  .monitor-head .left .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:blink 1.3s infinite}
+  .monitor-head .right{font-size:12px;color:var(--muted)}
+  .ekg-wrap{padding:8px 6px 2px;background:radial-gradient(120% 100% at 50% 0%,rgba(198,242,78,.06),transparent)}
+  .feed-viewport{height:236px;overflow:hidden;position:relative;border-top:1px solid rgba(255,255,255,.06);
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent);
+    mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent)}
+  .feed-scroll{animation:feedscroll 16s linear infinite}
+  .feed-row{display:flex;align-items:center;gap:12px;padding:11px 18px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.045)}
+  .feed-row .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .feed-row .name{color:var(--ink);min-width:130px}
+  .feed-row .meta{color:#6B7078;flex:1}
+  .toast{position:absolute;left:14px;right:14px;bottom:14px;background:rgba(255,77,94,.13);border:1px solid rgba(255,77,94,.4);border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:11px;backdrop-filter:blur(8px);animation:toastin 6s ease-in-out infinite}
+  .toast-icon{width:26px;height:26px;border-radius:8px;background:rgba(255,77,94,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .toast-text{font-size:12.5px;line-height:1.4}
+  .toast-text .title{color:#FF9AA3;font-weight:600}
+  .toast-text .sub{color:var(--ink-2)}
 
-  /* sections */
-  section.pad { padding: 80px 0; border-top: 1px solid var(--border); }
-  .eyebrow { text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
-  h2 { font-size: 40px; font-weight: 900; letter-spacing: -1.2px; margin: 0 0 16px; line-height: 1.15; }
-  .sec-sub { font-size: 17px; color: var(--ink-2); max-width: 560px; margin-bottom: 48px; }
+  .trust-strip{position:relative;z-index:2;max-width:1100px;margin:14px auto 0;padding:0 24px;display:flex;align-items:center;justify-content:center;gap:38px;flex-wrap:wrap;font-size:12.5px;color:var(--muted-2)}
+  .trust-strip span.sep{opacity:.4}
 
-  /* features grid */
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--grid-gap); }
-  .feature { padding: 28px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 14px; }
-  .feature .icon { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color: var(--accent); font-size: 20px; }
-  .feature h3 { font-size: 17px; font-weight: 700; margin: 0 0 6px; }
-  .feature p { color: var(--muted); margin: 0; font-size: 14px; line-height: 1.55; }
+  section.pad{position:relative;z-index:2;max-width:1200px;margin:0 auto;padding:110px 24px 40px}
+  section.pad.tight{padding:80px 24px 40px}
+  .sec-head{text-align:center;max-width:640px;margin:0 auto 52px}
+  .sec-head.left{text-align:left;margin:0 0 40px;max-width:660px}
+  .eyebrow{font-size:13px;color:var(--accent);letter-spacing:1px}
+  .sec-head h2{font-size:41px;letter-spacing:-1.2px;font-weight:700;margin-top:14px;line-height:1.08}
+  .sec-head p{color:#A2A7B0;font-size:17px;margin-top:14px;line-height:1.5}
 
-  /* pricing */
-  .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--grid-gap); }
-  .price-card { padding: 32px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 16px; }
-  .price-card.featured { border-color: var(--accent); box-shadow: 0 0 40px var(--accent-soft); background: linear-gradient(180deg, var(--bg-2), rgba(255,122,31,0.04)); }
-  .price-tier { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
-  .price-num { font-size: 44px; font-weight: 900; letter-spacing: -1.5px; margin-bottom: 8px; }
-  .price-num small { font-size: 15px; color: var(--muted); font-weight: 500; }
-  .price-desc { color: var(--muted); font-size: 14px; margin-bottom: 24px; min-height: 42px; }
-  .price-features { list-style: none; padding: 0; margin: 0 0 28px; }
-  .price-features li { padding: 8px 0; font-size: 14px; color: var(--ink-2); display: flex; align-items: center; gap: 10px; }
-  .price-features li::before { content: '✓'; color: var(--accent); font-weight: 800; }
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .feature-card{background:linear-gradient(180deg,var(--panel),#0D0F13);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:26px 24px;transition:border-color .2s,transform .2s}
+  .feature-card:hover{border-color:rgba(198,242,78,.35);transform:translateY(-3px)}
+  .feature-icon{width:44px;height:44px;border-radius:12px;background:rgba(198,242,78,.10);border:1px solid rgba(198,242,78,.22);display:flex;align-items:center;justify-content:center;color:var(--accent)}
+  .feature-card h3{font-size:18.5px;font-weight:600;margin-top:18px;letter-spacing:-.3px}
+  .feature-card p{color:#9BA0A9;font-size:14.5px;line-height:1.55;margin-top:9px}
 
-  /* cta section */
-  .cta-block { text-align: center; padding: 80px 40px; background: linear-gradient(135deg, var(--bg-2), var(--panel)); border: 1px solid var(--border); border-radius: 20px; margin: 40px 0; }
-  .cta-block h2 { font-size: 44px; margin: 0 0 12px; }
-  .cta-block p { color: var(--ink-2); max-width: 500px; margin: 0 auto 32px; font-size: 17px; }
+  .analytics-card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid rgba(255,255,255,.09);border-radius:22px;padding:26px;box-shadow:0 40px 90px -40px rgba(0,0,0,.8)}
+  .stat-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .stat-tile{background:#0B0D11;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px 18px}
+  .stat-tile .label{font-size:12px;color:var(--muted)}
+  .stat-tile .value{font-size:27px;font-weight:700;letter-spacing:-.6px;margin-top:6px}
+  .stat-tile .delta{font-size:12.5px;margin-top:4px}
+  .analytics-row{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-top:16px}
+  .chart-card,.funnel-card{background:#0B0D11;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:20px 22px}
+  .chart-head{display:flex;align-items:center;justify-content:space-between}
+  .chart-head .title{font-weight:600;font-size:15px}
+  .chart-legend{font-size:12px;color:var(--muted);display:flex;gap:14px}
+  .funnel-card .title{font-weight:600;font-size:15px}
+  .funnel-list{display:flex;flex-direction:column;gap:11px;margin-top:16px}
+  .funnel-step .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+  .funnel-step .top .label{color:#C7CBD2}
+  .funnel-step .top .pct{color:var(--muted)}
+  .funnel-track{height:12px;border-radius:6px;background:rgba(255,255,255,.05);overflow:hidden}
+  .funnel-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),#8fd12e)}
 
-  /* footer */
-  footer { padding: 60px 40px 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
-  footer .row { max-width: 1120px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-  footer .links { display: flex; gap: 20px; }
-  footer a:hover { color: var(--ink); }
+  .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
+  .step-card{background:linear-gradient(180deg,var(--panel),#0D0F13);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;display:flex;flex-direction:column}
+  .step-card .step-no{font-size:12.5px;color:var(--accent)}
+  .step-card h3{font-size:19px;font-weight:600;margin-top:8px}
+  .step-card p{color:#9BA0A9;font-size:14px;line-height:1.5;margin-top:8px}
+  .step-code{margin-top:16px;background:#0A0C0F;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px;font-size:11.8px;line-height:1.65;color:#C7CBD2;overflow-x:auto;flex:1}
+  .step-code .k{color:var(--blue)} .step-code .s{color:#FF9AA3} .step-code .n{color:var(--yellow)} .step-code .m{color:var(--muted)}
+  .rule-form{margin-top:16px;background:#0A0C0F;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px;flex:1;display:flex;flex-direction:column;gap:12px}
+  .rule-form .rf-label{font-size:11px;color:var(--muted);margin-bottom:5px}
+  .rule-form .rf-value{background:#111419;border:1px solid rgba(255,255,255,.09);border-radius:8px;padding:9px 11px;font-size:13px}
+  .rule-form .rf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .telegram-mock{margin-top:16px;background:#0A0C0F;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px;flex:1;display:flex;align-items:center}
+  .tg-bubble{width:100%;background:#17212B;border-radius:12px;padding:13px 14px;display:flex;gap:11px}
+  .tg-avatar{width:34px;height:34px;border-radius:50%;background:#2AABEE;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tg-name{color:#fff;font-size:13px;font-weight:600}
+  .tg-msg{color:#C7CBD2;font-size:12.5px;line-height:1.45;margin-top:3px}
+  .tg-time{color:#7B8894;font-size:11px;margin-top:5px}
 
-  @media (max-width: 780px) {
-    nav { padding: 14px 20px; }
-    nav .links { display: none; }
-    .wrap { padding: 0 20px; }
-    h1.hero-title { font-size: 44px; letter-spacing: -1.5px; }
-    .hero-sub { font-size: 17px; }
-    h2 { font-size: 30px; }
-    .grid-3, .pricing { grid-template-columns: 1fr; }
-    .hero { padding: 60px 0 40px; }
-    section.pad { padding: 60px 0; }
+  .integrations-card{background:linear-gradient(120deg,var(--panel),var(--panel-2));border:1px solid rgba(255,255,255,.09);border-radius:22px;padding:44px;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+  .integration-row{display:flex;align-items:center;gap:14px;background:#0B0D11;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px 18px}
+  .integration-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .integration-name{font-weight:600;font-size:15px}
+  .integration-sub{color:var(--muted);font-size:13px}
+  .integration-status{font-size:11px;color:var(--accent)}
+  .integration-status.muted{color:var(--muted)}
+
+  .cta-section{position:relative;z-index:2;max-width:1000px;margin:0 auto;padding:70px 24px 90px;text-align:center}
+  .cta-badge{width:52px;height:52px;border-radius:15px;background:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 0 40px rgba(198,242,78,.5);animation:floaty 4s ease-in-out infinite}
+  .cta-section h2{font-size:46px;letter-spacing:-1.4px;font-weight:700;margin-top:24px;line-height:1.05}
+  .cta-section p{color:#A2A7B0;font-size:18px;margin-top:16px}
+  .cta-ctas{display:flex;gap:13px;justify-content:center;margin-top:30px}
+  .cta-ctas .btn-primary,.cta-ctas .btn-ghost{font-size:16px;padding:15px 28px}
+
+  footer{position:relative;z-index:2;border-top:1px solid rgba(255,255,255,.07);margin-top:20px}
+  .footer-row{max-width:1200px;margin:0 auto;padding:34px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+  .footer-brand{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+  .footer-brand .badge{width:24px;height:24px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+  .footer-brand .name{color:var(--ink);font-weight:600}
+  .footer-links{display:flex;gap:26px;font-size:13.5px;color:var(--muted)}
+  .footer-links a{color:var(--muted)}
+
+  @media (max-width: 900px) {
+    header.hero{grid-template-columns:1fr}
+    .grid-3,.steps-grid,.analytics-row,.integrations-card{grid-template-columns:1fr}
+    .stat-tiles{grid-template-columns:repeat(2,1fr)}
+    .nav-links{display:none}
+    h1.hero-title{font-size:40px}
+    .sec-head h2{font-size:30px}
   }
 </style>
 </head>
 <body>
+<div class="bg-wrap">
+  <div class="grid-overlay"></div>
 
-<nav>
-  <a href="/" class="brand"><span class="dot"></span>pulsefy</a>
-  <div class="links">
-    <a href="#features">Features</a>
-    <a href="#pricing">Pricing</a>
-    <a href="#faq">FAQ</a>
-    <a href="/login">Sign in</a>
-    <a href="/register" class="cta">Get Started</a>
-  </div>
-</nav>
+  <nav>
+    <div class="brand">
+      <div class="brand-badge">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#08090B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2.5-7 4 15 3-9 2 4h4.5"/></svg>
+      </div>
+      <span class="brand-name">Pulsefy</span>
+    </div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#analytics">Analytics</a>
+      <a href="#how">How it works</a>
+      <a href="#integrations">Integrations</a>
+    </div>
+    <div class="nav-right">
+      <a href="/login" class="signin">Sign in</a>
+      <a href="/register" class="btn-accent">Start free</a>
+    </div>
+  </nav>
 
-<section class="hero">
-  <div class="wrap">
-    <div class="badge"><span class="green"></span>Live event pulse for indie apps</div>
-    <h1 class="hero-title">Alerts for every event, <span class="grad">from every app.</span></h1>
-    <p class="hero-sub">Wire subscribe_fail, purchase spikes, or any custom event to Telegram, Slack, or webhooks in minutes. Rule-based alerting built for indie developers.</p>
-    <div class="hero-ctas">
-      <a href="/register" class="btn btn-primary">Start free →</a>
-      <a href="#features" class="btn btn-ghost">See how it works</a>
+  <header class="hero">
+    <div>
+      <div class="pill"><span class="dot"></span>Real-time signals for indie developers</div>
+      <h1 class="hero-title">Live event pulse<br>for <span class="accent">indie apps</span>.</h1>
+      <p class="hero-sub">Alerts for every event, from every app. Wire <code>subscribe_fail</code>, purchase spikes, or any custom event to Telegram, Slack, or webhooks — in minutes.</p>
+      <div class="hero-ctas">
+        <a href="/register" class="btn-primary">Get started free</a>
+        <a href="/login" class="btn-ghost">See it live →</a>
+      </div>
+      <div class="hero-stats mono">
+        <span>No credit card</span><span class="sep">·</span><span>1 endpoint</span><span class="sep">·</span><span>Live in 5 min</span>
+      </div>
     </div>
 
-    <div class="code-preview">
-      <span class="lang">rule.json</span>
-<pre style="margin:0;color:var(--ink-2)"><span class="cmt">// Alert when purchases fail — retry loop detection</span>
+    <div class="monitor-card">
+      <div class="monitor-inner">
+        <div class="monitor-head">
+          <div class="left mono"><span class="dot"></span>live_feed</div>
+          <div class="right mono">1,284 events/min</div>
+        </div>
+        <div class="ekg-wrap">
+          <svg viewBox="0 0 600 120" width="100%" height="86" fill="none" preserveAspectRatio="none">
+            <path d="M0 62 L70 62 L84 62 L92 22 L100 102 L110 46 L124 62 L214 62 L228 62 L236 22 L244 102 L254 46 L268 62 L358 62 L372 62 L380 22 L388 102 L398 46 L412 62 L502 62 L516 62 L524 22 L532 102 L542 46 L556 62 L600 62" stroke="rgba(198,242,78,.16)" stroke-width="2"/>
+            <path d="M0 62 L70 62 L84 62 L92 22 L100 102 L110 46 L124 62 L214 62 L228 62 L236 22 L244 102 L254 46 L268 62 L358 62 L372 62 L380 22 L388 102 L398 46 L412 62 L502 62 L516 62 L524 22 L532 102 L542 46 L556 62 L600 62" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="120 1280" style="filter:drop-shadow(0 0 6px rgba(198,242,78,.7));animation:ekgsweep 3.4s linear infinite"/>
+          </svg>
+        </div>
+        <div class="feed-viewport">
+          <div class="feed-scroll mono" id="feed-scroll"></div>
+          <div class="toast">
+            <div class="toast-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF6B78" stroke-width="2.4" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            </div>
+            <div class="toast-text">
+              <div class="title">RULE FIRED · subscribe_fail spike</div>
+              <div class="sub">42 in 5 min &gt; threshold 20 · sent to #alerts</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="trust-strip mono">
+    <span>PING · React Native</span><span class="sep">/</span><span>Node</span><span class="sep">/</span><span>Swift</span><span class="sep">/</span><span>Go</span><span class="sep">/</span><span>Python</span><span class="sep">/</span><span>curl</span>
+  </div>
+
+  <section id="features" class="pad">
+    <div class="sec-head">
+      <div class="eyebrow mono">// EVERYTHING YOU NEED</div>
+      <h2>Rule-based alerting, built for indie developers</h2>
+      <p>Simple rules. Real-time signals. Ship events from any app, define rules in a form, get pinged the moment something's off.</p>
+    </div>
+    <div class="grid-3" id="features-grid"></div>
+  </section>
+
+  <section id="analytics" class="pad tight">
+    <div class="sec-head left">
+      <div class="eyebrow mono">// NOT JUST FAILURES</div>
+      <h2>See every user's funnel, not just the alarms</h2>
+      <p>Track your whole user journey with charts and funnels. Follow real users end to end — and let alerts surface the moments that matter.</p>
+    </div>
+
+    <div class="analytics-card">
+      <div class="stat-tiles" id="stat-tiles"></div>
+
+      <div class="analytics-row">
+        <div class="chart-card">
+          <div class="chart-head">
+            <div class="title">Events over time</div>
+            <div class="chart-legend mono"><span style="color:var(--accent)">● success</span><span style="color:var(--red)">● failed</span></div>
+          </div>
+          <svg viewBox="0 0 520 200" width="100%" height="200" style="margin-top:14px" preserveAspectRatio="none">
+            <line x1="0" y1="50" x2="520" y2="50" stroke="rgba(255,255,255,.05)"/>
+            <line x1="0" y1="100" x2="520" y2="100" stroke="rgba(255,255,255,.05)"/>
+            <line x1="0" y1="150" x2="520" y2="150" stroke="rgba(255,255,255,.05)"/>
+            <path d="M0 150 L52 138 L104 142 L156 110 L208 118 L260 82 L312 92 L364 58 L416 66 L468 40 L520 30 L520 200 L0 200 Z" fill="url(#gsucc)"/>
+            <path d="M0 150 L52 138 L104 142 L156 110 L208 118 L260 82 L312 92 L364 58 L416 66 L468 40 L520 30" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 5px rgba(198,242,78,.5))"/>
+            <path d="M0 178 L52 176 L104 180 L156 170 L208 174 L260 166 L312 172 L364 160 L416 168 L468 158 L520 162" fill="none" stroke="#FF6B78" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 5"/>
+            <defs><linearGradient id="gsucc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(198,242,78,.22)"/><stop offset="1" stop-color="rgba(198,242,78,0)"/></linearGradient></defs>
+          </svg>
+        </div>
+        <div class="funnel-card">
+          <div class="title">Conversion funnel</div>
+          <div class="funnel-list" id="funnel-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="pad">
+    <div class="sec-head">
+      <div class="eyebrow mono">// THREE STEPS</div>
+      <h2>From event to alert in minutes</h2>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-no mono">STEP 01</div>
+        <h3>Ship an event</h3>
+        <p>One endpoint, one payload — from any stack.</p>
+        <pre class="step-code mono"><span class="m">POST</span> <span style="color:var(--accent)">/v1/events</span>
 {
-  <span class="str">"events"</span>: [<span class="str">"subscribe_fail"</span>, <span class="str">"paywall_offerings_error"</span>],
-  <span class="str">"window_min"</span>: <span class="num">10</span>,
-  <span class="str">"threshold"</span>: <span class="num">3</span>,
-  <span class="str">"severity"</span>: <span class="str">"red"</span>,
-  <span class="str">"channels"</span>: [<span class="str">"telegram"</span>, <span class="str">"slack"</span>],
-  <span class="str">"message"</span>: <span class="str">"🔴 {count} fails in {window}m: {last_error}"</span>
+  <span class="k">"event"</span>: <span class="s">"subscribe_fail"</span>,
+  <span class="k">"app"</span>: <span class="s">"pomodo"</span>,
+  <span class="k">"user"</span>: <span class="s">"u_8213"</span>,
+  <span class="k">"props"</span>: { <span class="k">"code"</span>: <span class="n">429</span> }
 }</pre>
-    </div>
-  </div>
-</section>
-
-<section class="pad" id="features">
-  <div class="wrap">
-    <div class="eyebrow">FEATURES</div>
-    <h2>Simple rules. Real-time signals.</h2>
-    <p class="sec-sub">Ship events from any app, define rules in a form, get pinged the moment something's off.</p>
-
-    <div class="grid-3">
-      <div class="feature">
-        <div class="icon">⚡</div>
-        <h3>Live event feed</h3>
-        <p>Every event streams into your dashboard the moment it lands. Filter by app, version, user, or event name.</p>
       </div>
-      <div class="feature">
-        <div class="icon">🎯</div>
-        <h3>Rule engine</h3>
-        <p>Threshold + window + cooldown. No YAML wizardry — a simple form covers 90% of alerting cases.</p>
+      <div class="step-card">
+        <div class="step-no mono">STEP 02</div>
+        <h3>Define a rule</h3>
+        <p>Threshold + window + cooldown. No YAML wizardry.</p>
+        <div class="rule-form mono">
+          <div>
+            <div class="rf-label">WHEN EVENT</div>
+            <div class="rf-value" style="color:#FF9AA3">subscribe_fail</div>
+          </div>
+          <div class="rf-grid">
+            <div>
+              <div class="rf-label">COUNT &gt;</div>
+              <div class="rf-value">20</div>
+            </div>
+            <div>
+              <div class="rf-label">WINDOW</div>
+              <div class="rf-value">5 min</div>
+            </div>
+          </div>
+          <div>
+            <div class="rf-label">COOLDOWN</div>
+            <div class="rf-value">15 min</div>
+          </div>
+        </div>
       </div>
-      <div class="feature">
-        <div class="icon">🔌</div>
-        <h3>Telegram · Slack · Webhook</h3>
-        <p>Route each rule to the channel that matches urgency. Add integrations without touching code.</p>
-      </div>
-      <div class="feature">
-        <div class="icon">🌐</div>
-        <h3>Any app, any stack</h3>
-        <p>POST events from your React Native app, backend, or CLI. One endpoint, one payload.</p>
-      </div>
-      <div class="feature">
-        <div class="icon">🧠</div>
-        <h3>Smart dedup</h3>
-        <p>Cooldown per rule signature — never wake up to 40 identical Telegram pings.</p>
-      </div>
-      <div class="feature">
-        <div class="icon">📊</div>
-        <h3>Fired alarm history</h3>
-        <p>Audit trail of every trigger: which rule fired when, sample events, channel targets.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="pad" id="pricing">
-  <div class="wrap">
-    <div class="eyebrow">PRICING</div>
-    <h2>Ship, then scale.</h2>
-    <p class="sec-sub">Start free, upgrade when your traffic (or team) grows.</p>
-
-    <div class="pricing">
-      <div class="price-card">
-        <div class="price-tier">Solo</div>
-        <div class="price-num">$0<small>/month</small></div>
-        <p class="price-desc">Perfect for indie apps under 50k events / month.</p>
-        <ul class="price-features">
-          <li>Up to 50k events / mo</li>
-          <li>5 alert rules</li>
-          <li>Telegram + Slack + webhook</li>
-          <li>7-day event retention</li>
-        </ul>
-        <a href="/register" class="btn btn-ghost" style="width:100%;justify-content:center">Get Started</a>
-      </div>
-      <div class="price-card featured">
-        <div class="price-tier" style="color:var(--accent)">Studio · popular</div>
-        <div class="price-num">$19<small>/month</small></div>
-        <p class="price-desc">For studios shipping multiple apps and needing team access.</p>
-        <ul class="price-features">
-          <li>Up to 1M events / mo</li>
-          <li>Unlimited rules</li>
-          <li>Multi-app tenant</li>
-          <li>30-day event retention</li>
-          <li>Team members</li>
-        </ul>
-        <a href="/register" class="btn btn-primary" style="width:100%;justify-content:center">Start free trial</a>
-      </div>
-      <div class="price-card">
-        <div class="price-tier">Scale</div>
-        <div class="price-num">Custom<small></small></div>
-        <p class="price-desc">For high-volume products needing SLAs and dedicated support.</p>
-        <ul class="price-features">
-          <li>Unlimited events</li>
-          <li>Custom retention</li>
-          <li>SLA + on-call</li>
-          <li>SSO / SAML</li>
-          <li>Dedicated slack</li>
-        </ul>
-        <a href="mailto:hello@pulsefy.tools" class="btn btn-ghost" style="width:100%;justify-content:center">Contact us</a>
+      <div class="step-card">
+        <div class="step-no mono">STEP 03</div>
+        <h3>Get pinged</h3>
+        <p>Routed to the channel that matches urgency.</p>
+        <div class="telegram-mock">
+          <div class="tg-bubble">
+            <div class="tg-avatar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M9.8 15.6 9.6 19c.4 0 .6-.2.8-.4l2-1.9 4.1 3c.8.4 1.3.2 1.5-.7l2.7-12.6c.3-1.1-.4-1.6-1.1-1.3L3.4 10.3c-1.1.4-1.1 1-.2 1.3l4.3 1.3 9.9-6.2c.5-.3.9-.1.5.2z"/></svg>
+            </div>
+            <div style="min-width:0">
+              <div class="tg-name">Pulsefy Bot</div>
+              <div class="tg-msg">🔴 <b>subscribe_fail</b> spiked — 42 in 5 min (threshold 20). App: pomodo · v2.3.1</div>
+              <div class="tg-time mono">now</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="pad">
-  <div class="wrap">
-    <div class="cta-block">
-      <h2>Wire your first alert in 5 minutes.</h2>
-      <p>No credit card. No YAML files. Just events flowing into rules you actually understand.</p>
-      <a href="/register" class="btn btn-primary">Get Started Free →</a>
+  <section id="integrations" class="pad tight">
+    <div class="integrations-card">
+      <div>
+        <div class="eyebrow mono">// ROUTE ANYWHERE</div>
+        <h2 style="font-size:34px;letter-spacing:-1px;font-weight:700;margin-top:12px;line-height:1.12">Telegram, Slack, or any webhook</h2>
+        <p style="color:#A2A7B0;font-size:16px;margin-top:14px;line-height:1.5">Add integrations without touching code. Smart dedup with per-rule cooldown means you never wake up to 40 identical pings.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="integration-row">
+          <div class="integration-icon" style="background:#2AABEE"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M9.8 15.6 9.6 19c.4 0 .6-.2.8-.4l2-1.9 4.1 3c.8.4 1.3.2 1.5-.7l2.7-12.6c.3-1.1-.4-1.6-1.1-1.3L3.4 10.3c-1.1.4-1.1 1-.2 1.3l4.3 1.3 9.9-6.2c.5-.3.9-.1.5.2z"/></svg></div>
+          <div style="flex:1"><div class="integration-name">Telegram</div><div class="integration-sub">Bot pings to any chat or channel</div></div>
+          <span class="integration-status mono">CONNECT</span>
+        </div>
+        <div class="integration-row">
+          <div class="integration-icon" style="background:#fff"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="#36C5F0" d="M5.1 15.2a2.5 2.5 0 1 1-2.5-2.5h2.5z"/><path fill="#2EB67D" d="M8.8 15.2a2.5 2.5 0 1 1 5 0v6.3a2.5 2.5 0 1 1-5 0z"/><path fill="#ECB22E" d="M8.8 5.1a2.5 2.5 0 1 1 2.5-2.5v2.5z"/><path fill="#E01E5A" d="M8.8 8.8a2.5 2.5 0 1 1 0 5H2.5a2.5 2.5 0 1 1 0-5z"/><path fill="#E01E5A" d="M18.9 8.8a2.5 2.5 0 1 1 2.5 2.5h-2.5z" transform="rotate(180 20.15 10.05)"/></svg></div>
+          <div style="flex:1"><div class="integration-name">Slack</div><div class="integration-sub">Post to the right channel per rule</div></div>
+          <span class="integration-status mono">CONNECT</span>
+        </div>
+        <div class="integration-row">
+          <div class="integration-icon" style="background:rgba(198,242,78,.12);border:1px solid rgba(198,242,78,.25);color:var(--accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.66 0-3.01-1.34-3.01-3s1.35-3 3.01-3H18M8 8.98H2.01"/><circle cx="18" cy="16.98" r="3"/><circle cx="6" cy="8.98" r="3"/></svg></div>
+          <div style="flex:1"><div class="integration-name">Webhook</div><div class="integration-sub">POST the payload to your own endpoint</div></div>
+          <span class="integration-status muted mono">+ ADD</span>
+        </div>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<footer>
-  <div class="row">
-    <div>© 2026 pulsefy.tools · a Pera Labs product</div>
-    <div class="links">
-      <a href="#pricing">Pricing</a>
-      <a href="mailto:hello@pulsefy.tools">Contact</a>
-      <a href="/login">Sign in</a>
+  <section id="cta" class="cta-section">
+    <div class="cta-badge">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#08090B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2.5-7 4 15 3-9 2 4h4.5"/></svg>
     </div>
-  </div>
-</footer>
+    <h2>Ship your first event<br>in five minutes</h2>
+    <p>Simple rules. Real-time signals. Built for indie developers.</p>
+    <div class="cta-ctas">
+      <a href="/register" class="btn-primary">Start free</a>
+      <a href="/login" class="btn-ghost">Sign in</a>
+    </div>
+  </section>
 
+  <footer>
+    <div class="footer-row">
+      <div class="footer-brand">
+        <div class="badge"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#08090B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2.5-7 4 15 3-9 2 4h4.5"/></svg></div>
+        <span class="name">Pulsefy</span><span>© 2026</span>
+      </div>
+      <div class="footer-links mono">
+        <a href="/register">Get started</a><a href="#pricing">Pricing</a><a href="/login">Sign in</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var feed = [
+    {name:'purchase.success', meta:'pomodo · v2.3.1', tag:'$9.99', color:'#C6F24E'},
+    {name:'subscribe_fail', meta:'pomodo · v2.3.1', tag:'429', color:'#FF6B78'},
+    {name:'app.open', meta:'web · anon', tag:'', color:'#5D626B'},
+    {name:'checkout.start', meta:'pomodo · u_8213', tag:'', color:'#6FB5FF'},
+    {name:'purchase.success', meta:'notes · v1.4', tag:'$49.99', color:'#C6F24E'},
+    {name:'subscribe_fail', meta:'pomodo · timeout', tag:'ERR', color:'#FF6B78'},
+    {name:'signup.complete', meta:'notes · u_9042', tag:'', color:'#6FB5FF'},
+    {name:'purchase.success', meta:'pomodo · v2.3.1', tag:'$9.99', color:'#C6F24E'},
+    {name:'trial.start', meta:'notes · u_9051', tag:'', color:'#E9C46A'}
+  ];
+  var rows = feed.concat(feed).map(function(r){
+    return '<div class="feed-row"><span class="dot" style="background:'+r.color+';box-shadow:0 0 8px '+r.color+'"></span>'+
+      '<span class="name">'+r.name+'</span><span class="meta">'+r.meta+'</span>'+
+      '<span style="color:'+r.color+';font-size:12px">'+r.tag+'</span></div>';
+  }).join('');
+  document.getElementById('feed-scroll').innerHTML = rows;
+
+  var features = [
+    {icon:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>', title:'Live event feed', body:'Every event streams into your dashboard the moment it lands. Filter by app, version, user, or event name.'},
+    {icon:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>', title:'Rule engine', body:'Threshold + window + cooldown. No YAML wizardry — a simple form covers 90% of alerting cases.'},
+    {icon:'<path d="M18 16.98h-5.99c-1.66 0-3.01-1.34-3.01-3s1.35-3 3.01-3H18M8 8.98H2.01"/><circle cx="18" cy="16.98" r="3"/><circle cx="6" cy="8.98" r="3"/>', title:'Telegram · Slack · Webhook', body:'Route each rule to the channel that matches urgency. Add integrations without touching code.'},
+    {icon:'<circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>', title:'Any app, any stack', body:'POST events from your React Native app, backend, or CLI. One endpoint, one payload.'},
+    {icon:'<path d="M12 3a4 4 0 0 0-4 4c0 1-1 2-1 3a5 5 0 0 0 10 0c0-1-1-2-1-3a4 4 0 0 0-4-4z"/><path d="M9 17h6M10 21h4"/>', title:'Smart dedup', body:'Cooldown per rule signature — never wake up to 40 identical Telegram pings.'},
+    {icon:'<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/>', title:'Fired alarm history', body:'Audit trail of every trigger: which rule fired when, sample events, and channel targets.'}
+  ];
+  document.getElementById('features-grid').innerHTML = features.map(function(f){
+    return '<div class="feature-card"><div class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+f.icon+'</svg></div>'+
+      '<h3>'+f.title+'</h3><p>'+f.body+'</p></div>';
+  }).join('');
+
+  var stats = [
+    {label:'Events today', value:'182,410', delta:'▲ 12.4% vs yesterday', color:'#C6F24E'},
+    {label:'Active users', value:'4,207', delta:'▲ 3.1%', color:'#C6F24E'},
+    {label:'Fail rate', value:'0.8%', delta:'▼ 0.3%', color:'#C6F24E'},
+    {label:'Alerts fired', value:'6', delta:'2 need attention', color:'#FF8A3D'}
+  ];
+  document.getElementById('stat-tiles').innerHTML = stats.map(function(s){
+    return '<div class="stat-tile"><div class="label mono">'+s.label+'</div><div class="value">'+s.value+'</div>'+
+      '<div class="delta" style="color:'+s.color+'">'+s.delta+'</div></div>';
+  }).join('');
+
+  var funnel = [
+    {label:'Install', pct:'100%', w:'100%'},
+    {label:'Sign up', pct:'61%', w:'61%'},
+    {label:'Activate', pct:'38%', w:'38%'},
+    {label:'Purchase', pct:'14%', w:'14%'}
+  ];
+  document.getElementById('funnel-list').innerHTML = funnel.map(function(s){
+    return '<div class="funnel-step"><div class="top"><span class="label">'+s.label+'</span><span class="pct mono">'+s.pct+'</span></div>'+
+      '<div class="funnel-track"><div class="funnel-fill" style="width:'+s.w+'"></div></div></div>';
+  }).join('');
+})();
+</script>
 </body>
 </html>
