@@ -124,6 +124,11 @@
   .suggest-card .why{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#9BA0A9;margin-top:7px}
   .suggest-card .why b{color:var(--ink);font-weight:400}
   .suggest-card .actions{display:flex;gap:8px;flex-shrink:0}
+  .suggest-banner{background:linear-gradient(120deg,rgba(198,242,78,.09),transparent);border:1px solid rgba(198,242,78,.2);border-radius:14px;padding:16px 20px;font-size:14px;color:#C7CBD2;line-height:1.5;margin-bottom:18px}
+  .funnel-stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .funnel-stats .st{background:#0B0D11;border:1px solid var(--border);border-radius:10px;padding:8px 15px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+  .funnel-stats .st b{font-family:'Space Grotesk',sans-serif;font-size:15px;color:var(--ink);font-weight:700}
+  .funnel-drop{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--red);margin:2px 0 10px 4px}
   .rule-card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:20px;margin-bottom:14px}
   .rule-card .rule-body{flex:1;min-width:0}
   .rule-card .rule-title-row{display:flex;align-items:center;gap:11px}
@@ -305,6 +310,7 @@
     <!-- FUNNELS -->
     <div id="tab-funnels" class="tab" style="display:none">
       <div class="chips" id="funnel-chips"></div>
+      <div class="funnel-stats" id="funnel-stats"></div>
       <div class="panel">
         <div class="title" style="margin-bottom:4px">
           <h3 id="funnel-title">Activation funnel</h3>
@@ -650,7 +656,7 @@ async function loadSuggested(){
   const container = document.getElementById('suggested-list');
   container.innerHTML = '<div class="empty">Scanning recent events…</div>';
   const [summary, rulesRes] = await Promise.all([
-    fetch('/api/events/summary?since_min=1440').then(r=>r.json()).catch(()=>({counts:[]})),
+    fetch('/api/events/summary?since_min=1440').then(r=>r.json()).catch(()=>({rows:[]})),
     fetch('/api/rules').then(r=>r.json()).catch(()=>({rules:[]})),
   ]);
   const rules = rulesRes.rules || [];
@@ -658,6 +664,7 @@ async function loadSuggested(){
   rules.forEach(r => (Array.isArray(r.events) ? r.events : String(r.events||'').split(',')).map(s=>String(s).trim()).filter(Boolean).forEach(e=>covered.add(e)));
   const dismissed = dismissedSuggestions();
   const counts = summary.rows || [];
+  const totalScanned = counts.reduce((sum,c) => sum + (c.n||0), 0);
   const candidates = counts
     .filter(c => /fail|error|crash|decline|expire|cancel/i.test(c.name))
     .filter(c => !covered.has(c.name))
@@ -666,11 +673,13 @@ async function loadSuggested(){
     .sort((a,b) => (b.n||0) - (a.n||0))
     .slice(0, 8);
 
+  const banner = `<div class="suggest-banner">Pulsefy scanned <b>${totalScanned.toLocaleString()}</b> events in the last 24h and found <b style="color:var(--accent)">${candidates.length}</b> place${candidates.length===1?'':'s'} worth an alert.</div>`;
+
   if (!candidates.length){
-    container.innerHTML = '<div class="empty">No new alert suggestions — either everything is covered by a rule, or things are quiet.</div>';
+    container.innerHTML = banner + '<div class="empty">No new alert suggestions — either everything is covered by a rule, or things are quiet.</div>';
     return;
   }
-  container.innerHTML = candidates.map(c => {
+  container.innerHTML = banner + candidates.map(c => {
     const n = c.n || 0;
     const severity = n >= 25 ? 'high' : (n >= 10 ? 'med' : 'low');
     const color = severity==='high' ? 'var(--red)' : (severity==='med' ? 'var(--orange)' : 'var(--yellow)');
@@ -713,6 +722,12 @@ const FUNNEL_DEFS = {
     {label:'Started checkout', re:/checkout|purchase_attempt|subscribe_attempt/i},
     {label:'Purchased', re:/purchase_success|subscribe_success|purchased/i},
   ]},
+  churn: {label:'Churn funnel', steps:[
+    {label:'Signed up', re:/signup|register|sign_up|identify/i},
+    {label:'Active week 1', re:/open|launch|session/i},
+    {label:'Hit a failure', re:/fail|error|decline/i},
+    {label:'Still active', re:/open|launch|session|purchase|subscribe/i},
+  ]},
 };
 let currentFunnel = 'activation';
 function renderFunnelChips(){
@@ -735,10 +750,25 @@ async function loadFunnels(){
     def.steps.forEach((s, i) => { if (s.re.test(e.name)) userSets[i].add(e.user_id||e.id); });
   }
   const base = Math.max(1, userSets[0].size);
+  const counts = userSets.map(s => s.size);
+  const endPct = Math.round((counts[counts.length-1] / base) * 100);
+  let biggestDropIdx = 0, biggestDrop = -1;
+  for (let i=1;i<counts.length;i++){
+    const drop = counts[i-1] > 0 ? Math.round(100 - (counts[i]/counts[i-1])*100) : 0;
+    if (drop > biggestDrop){ biggestDrop = drop; biggestDropIdx = i; }
+  }
+  document.getElementById('funnel-stats').innerHTML = `
+    <div class="st">In flow <b>${base}</b></div>
+    <div class="st">End-to-end <b style="color:var(--accent)">${endPct}%</b></div>
+    <div class="st">Biggest leak <b style="color:var(--red)">${def.steps[biggestDropIdx-1]?.label||''} → ${def.steps[biggestDropIdx]?.label||''} (${biggestDrop}%)</b></div>`;
   stepsEl.innerHTML = def.steps.map((s, i) => {
-    const n = userSets[i].size;
+    const n = counts[i];
     const pct = Math.round((n / base) * 100);
-    return `<div class="funnel-step">
+    const dropHtml = i>0 ? (() => {
+      const drop = counts[i-1] > 0 ? Math.round(100 - (n/counts[i-1])*100) : 0;
+      return drop > 0 ? `<div class="funnel-drop">↓ ${drop}% dropped off before this step</div>` : '';
+    })() : '';
+    return `${dropHtml}<div class="funnel-step">
       <div class="head"><span class="l">${escapeHtml(s.label)}</span><span class="r">${n} · ${pct}%</span></div>
       <div class="funnel-bar"><div class="fill" style="width:${Math.min(100,pct)}%"></div></div>
     </div>`;
