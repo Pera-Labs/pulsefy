@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>pulsefy — dashboard</title>
+<style>
+  :root {
+    --bg: #0a0a12; --bg-2: #12121e; --panel: #1a1a26; --panel-hover: #22222e;
+    --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
+    --ink: #f8f8fc; --ink-2: #c8c8d4; --muted: #7c7c92;
+    --accent: #ff7a1f; --accent-2: #ffb84d; --accent-soft: #ff7a1f14;
+    --red: #ef4444; --red-soft: rgba(239,68,68,0.15);
+    --yellow: #eab308; --yellow-soft: rgba(234,179,8,0.15);
+    --green: #22c55e; --green-soft: rgba(34,197,94,0.15);
+    --blue: #3b82f6; --blue-soft: rgba(59,130,246,0.15);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* app shell */
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* sidebar */
+  aside { background: var(--bg-2); border-right: 1px solid var(--border); padding: 20px 16px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  aside .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 17px; padding: 6px 10px 20px; letter-spacing: -0.3px; }
+  aside .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.5} }
+  aside .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: var(--muted); cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.15s; text-decoration: none; }
+  aside .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--ink); }
+  aside .nav-item.active { background: var(--accent-soft); color: var(--accent); }
+  aside .nav-item .ic { width: 18px; text-align: center; font-size: 15px; }
+  aside .divider { height: 1px; background: var(--border); margin: 12px 0; }
+  aside .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 700; padding: 4px 12px; margin: 8px 0 4px; }
+  aside .footer { margin-top: auto; padding: 12px 12px 4px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  aside .footer .user { font-size: 13px; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
+
+  /* main */
+  main { padding: 32px 40px; overflow-x: auto; }
+  .page-hdr { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; gap: 20px; flex-wrap: wrap; }
+  .page-hdr .left h1 { margin: 0 0 4px; font-size: 26px; font-weight: 800; letter-spacing: -0.6px; }
+  .page-hdr .left .sub { color: var(--muted); font-size: 14px; }
+  .page-hdr .right { display: flex; gap: 10px; align-items: center; }
+
+  /* status pill (SSE state) */
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
+  .pill-live { background: var(--green-soft); color: var(--green); }
+  .pill-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 1.5s infinite; }
+  .pill-off { background: var(--yellow-soft); color: var(--yellow); }
+
+  /* stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; transition: border-color 0.15s; }
+  .stat:hover { border-color: var(--border-strong); }
+  .stat .label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .stat .value { font-size: 26px; font-weight: 800; letter-spacing: -0.6px; font-variant-numeric: tabular-nums; }
+  .stat .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* panel */
+  .panel { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+  .panel-hdr { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .panel-hdr h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .panel-body { padding: 20px; }
+  .panel-controls { display: flex; gap: 8px; align-items: center; }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 0; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-2); color: var(--bg); }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--ink); }
+  .btn-ghost:hover { border-color: var(--ink-2); background: rgba(255,255,255,0.03); }
+  .btn-danger { background: var(--red-soft); color: var(--red); }
+  .btn-danger:hover { background: var(--red); color: white; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  /* input */
+  input, select, textarea { background: var(--bg); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 12px; font-family: inherit; font-size: 13px; width: 100%; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--accent); }
+  label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .field { margin-bottom: 14px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* filters */
+  .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .filters input, .filters select { width: auto; min-width: 140px; }
+
+  /* table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 20px; text-align: left; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th { font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10.5px; background: rgba(255,255,255,0.02); }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  td.mono { font-family: 'SF Mono', ui-monospace, Consolas, monospace; font-size: 12px; }
+  td.small { color: var(--muted); font-size: 11.5px; }
+
+  /* badge */
+  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  .badge-red { background: var(--red-soft); color: var(--red); }
+  .badge-yellow { background: var(--yellow-soft); color: var(--yellow); }
+  .badge-green { background: var(--green-soft); color: var(--green); }
+  .badge-blue { background: var(--blue-soft); color: var(--blue); }
+  .badge-gray { background: rgba(255,255,255,0.06); color: var(--muted); }
+
+  /* rules grid */
+  .rules { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .rule-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: border-color 0.15s; }
+  .rule-card:hover { border-color: var(--border-strong); }
+  .rule-card h4 { margin: 0 0 8px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .rule-card .rule-desc { color: var(--muted); font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
+  .rule-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 12px 0; border-top: 1px solid var(--border); }
+  .rule-meta .m { display: flex; flex-direction: column; gap: 2px; }
+  .rule-meta .m span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .rule-meta .m b { color: var(--ink); font-weight: 600; font-size: 13px; }
+  .rule-actions { display: flex; gap: 6px; margin-top: 12px; }
+
+  /* modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal-bg.active { display: flex; }
+  .modal { background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 14px; padding: 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { margin: 0 0 20px; font-size: 18px; font-weight: 700; }
+
+  .empty { padding: 60px 20px; text-align: center; color: var(--muted); }
+  .empty h4 { color: var(--ink); font-size: 16px; font-weight: 700; margin: 0 0 6px; }
+
+  .toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .toggle input { width: auto; margin: 0; }
+
+  /* tabs (top) */
+  #events-body tr { animation: slideIn 0.25s ease-out; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    aside { position: relative; height: auto; flex-direction: row; overflow-x: auto; padding: 12px; }
+    aside .nav-item { flex: 0 0 auto; }
+    aside .footer, aside .section-label, aside .divider { display: none; }
+    main { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside>
+  <div class="brand"><span class="dot"></span>pulsefy</div>
+  <a class="nav-item active" data-tab="feed" onclick="setTab('feed')"><span class="ic">📊</span><span>Feed</span></a>
+  <a class="nav-item" data-tab="rules" onclick="setTab('rules')"><span class="ic">🚨</span><span>Rules</span></a>
+  <a class="nav-item" data-tab="alarms" onclick="setTab('alarms')"><span class="ic">🔔</span><span>Alarms</span></a>
+  <a class="nav-item" data-tab="integrations" onclick="setTab('integrations')"><span class="ic">🔌</span><span>Integrations</span></a>
+  <div class="divider"></div>
+  <div class="section-label">Account</div>
+  <a class="nav-item" onclick="logout()"><span class="ic">→</span><span>Sign out</span></a>
+  <div class="footer">
+    <div class="user" id="user-name">…</div>
+    <div id="user-email">…</div>
+  </div>
+</aside>
+
+<main>
+
+<!-- FEED -->
+<section id="tab-feed">
+  <div class="page-hdr">
+    <div class="left">
+      <h1>Live event feed</h1>
+      <div class="sub">Every event from your apps, streaming in real time.</div>
+    </div>
+    <div class="right">
+      <span class="pill pill-live" id="conn">Live · connected</span>
+      <select id="feed-since" style="width:auto;min-width:130px" onchange="loadEvents()">
+        <option value="60">Last 1h</option>
+        <option value="360">Last 6h</option>
+        <option value="1440" selected>Last 24h</option>
+        <option value="4320">Last 3d</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="panel">
+    <div class="panel-hdr">
+      <h3>Events</h3>
+      <div class="filters">
+        <input id="filter-name" placeholder="Event name…" style="width:160px"/>
+        <input id="filter-version" placeholder="App version" style="width:120px"/>
+        <input id="filter-user" placeholder="User id" style="width:160px"/>
+        <button class="btn btn-primary btn-sm" onclick="loadEvents()">Apply</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Clear</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th style="width:110px">Time</th><th style="width:180px">Event</th><th style="width:80px">Version</th><th style="width:70px">Country</th><th>User</th><th>Props</th></tr></thead>
+        <tbody id="events-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- RULES -->
+<section id="tab-rules" style="display:none">
+  <div class="page-hdr">
+    <div class="left">
+      <h1>Alert rules</h1>
+      <div class="sub">Threshold + window + cooldown. Trigger the channels you care about.</div>
+    </div>
+    <div class="right">
+      <button class="btn btn-primary" onclick="editRule(null)">+ New rule</button>
+    </div>
+  </div>
+  <div class="rules" id="rules-grid"></div>
+</section>
+
+<!-- ALARMS -->
+<section id="tab-alarms" style="display:none">
+  <div class="page-hdr">
+    <div class="left">
+      <h1>Alarm history</h1>
+      <div class="sub">Every rule that fired, with sample events + channels dispatched.</div>
+    </div>
+  </div>
+  <div class="panel">
+    <div style="overflow-x:auto" id="alarms-list"></div>
+  </div>
+</section>
+
+<!-- INTEGRATIONS -->
+<section id="tab-integrations" style="display:none">
+  <div class="page-hdr">
+    <div class="left">
+      <h1>Integrations</h1>
+      <div class="sub">Configure destinations for alerts. Each rule picks its channels.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>Telegram</h3></div>
+    <div class="panel-body">
+      <div class="row2">
+        <div class="field"><label>Bot Token</label><input id="tg-token" placeholder="123456:ABCDEF..." type="password"/></div>
+        <div class="field"><label>Chat ID</label><input id="tg-chat" placeholder="-1001234567890"/></div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="tg-enabled"/> Enabled</label>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveIntegrations()">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="testIntegration('telegram')">Send test</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>Slack</h3></div>
+    <div class="panel-body">
+      <div class="field"><label>Incoming Webhook URL</label><input id="sl-webhook" placeholder="https://hooks.slack.com/services/..."/></div>
+      <label class="toggle"><input type="checkbox" id="sl-enabled"/> Enabled</label>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveIntegrations()">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="testIntegration('slack')">Send test</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h3>Generic webhook</h3></div>
+    <div class="panel-body">
+      <div class="field"><label>URL</label><input id="wh-url" placeholder="https://your-endpoint.com/alarm"/></div>
+      <label class="toggle"><input type="checkbox" id="wh-enabled"/> Enabled</label>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveIntegrations()">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="testIntegration('webhook')">Send test</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- Rule modal -->
+<div class="modal-bg" id="modal-rule">
+  <div class="modal">
+    <h3 id="modal-title">Edit rule</h3>
+    <input type="hidden" id="r-id"/>
+    <div class="field"><label>Name</label><input id="r-name"/></div>
+    <div class="field"><label>Description</label><input id="r-desc"/></div>
+    <div class="field"><label>Events (comma-separated)</label><input id="r-events" placeholder="subscribe_fail, paywall_offerings_error"/></div>
+    <div class="row2">
+      <div class="field"><label>Window (min)</label><input id="r-window" type="number" value="10"/></div>
+      <div class="field"><label>Threshold (count)</label><input id="r-threshold" type="number" value="3"/></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Cooldown (min)</label><input id="r-cooldown" type="number" value="30"/></div>
+      <div class="field"><label>Severity</label><select id="r-severity"><option value="red">Red (critical)</option><option value="yellow">Yellow (warning)</option><option value="green">Green (info)</option></select></div>
+    </div>
+    <div class="field"><label>App versions (comma, empty = all)</label><input id="r-versions" placeholder="1.1.0, 1.0.9"/></div>
+    <div class="field"><label>Filter: error contains</label><input id="r-error-contains" placeholder="receipt not valid"/></div>
+    <div class="field">
+      <label>Channels</label>
+      <div style="display:flex;gap:16px;padding-top:4px">
+        <label class="toggle"><input type="checkbox" id="r-ch-telegram"/> Telegram</label>
+        <label class="toggle"><input type="checkbox" id="r-ch-slack"/> Slack</label>
+        <label class="toggle"><input type="checkbox" id="r-ch-webhook"/> Webhook</label>
+      </div>
+    </div>
+    <div class="field"><label>Message template</label><textarea id="r-template" rows="2" placeholder="🔴 {count} events in {window}m — {last_error}"></textarea></div>
+    <label class="toggle" style="margin:8px 0 20px"><input type="checkbox" id="r-enabled" checked/> Enabled</label>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeRule()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRule()">Save rule</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let RULES = [];
+let ME = null;
+
+// ===== auth check =====
+async function loadMe() {
+  const r = await fetch('/api/auth/me').then(r=>r.json()).catch(()=>({ok:false}));
+  if (!r.ok) { window.location.href='/login'; return; }
+  ME = r.user;
+  document.getElementById('user-name').textContent = ME.name || ME.email.split('@')[0];
+  document.getElementById('user-email').textContent = ME.email;
+}
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  window.location.href = '/';
+}
+
+// ===== tabs =====
+function setTab(tab) {
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
+  ['feed','rules','alarms','integrations'].forEach(t => document.getElementById('tab-'+t).style.display = (t===tab)?'block':'none');
+  if (tab==='feed') { loadEvents(); }
+  if (tab==='rules') loadRules();
+  if (tab==='alarms') loadAlarms();
+  if (tab==='integrations') loadIntegrations();
+}
+
+// ===== feed =====
+async function loadEvents() {
+  const since = document.getElementById('feed-since').value;
+  const qs = new URLSearchParams({ since_min: since });
+  const nm = document.getElementById('filter-name').value.trim(); if (nm) qs.set('name', nm);
+  const av = document.getElementById('filter-version').value.trim(); if (av) qs.set('app_version', av);
+  const uid = document.getElementById('filter-user').value.trim(); if (uid) qs.set('user_id', uid);
+  const r = await fetch('/api/events?' + qs.toString()).then(r=>r.json());
+  const tbody = document.getElementById('events-body');
+  tbody.innerHTML = '';
+  for (const e of r.rows) renderEvent(e, tbody, false);
+  loadStats(since);
+}
+
+function renderEvent(e, tbody, prepend) {
+  const tr = document.createElement('tr');
+  const timeShort = (e.created_at || '').replace('T',' ').slice(5, 19);
+  const propsPreview = String(e.props || '').slice(0, 180);
+  tr.innerHTML =
+    '<td class="mono small">'+timeShort+'</td>' +
+    '<td><span class="badge '+badgeForEvent(e.name)+'">'+e.name+'</span></td>' +
+    '<td class="mono small">'+(e.app_version||'—')+'</td>' +
+    '<td class="mono small">'+(e.country||'—')+'</td>' +
+    '<td class="mono small">'+String(e.user_id||'').slice(0,32)+'</td>' +
+    '<td class="mono small">'+esc(propsPreview)+'</td>';
+  if (prepend) tbody.insertBefore(tr, tbody.firstChild);
+  else tbody.appendChild(tr);
+  while (tbody.children.length > 200) tbody.removeChild(tbody.lastChild);
+}
+
+function badgeForEvent(name) {
+  if (/fail|error/i.test(name)) return 'badge-red';
+  if (/cancel|dismiss/i.test(name)) return 'badge-yellow';
+  if (/success/i.test(name)) return 'badge-green';
+  if (/attempt|view|open/i.test(name)) return 'badge-blue';
+  return 'badge-gray';
+}
+
+async function loadStats(since) {
+  const r = await fetch('/api/events/summary?since_min=' + since).then(r=>r.json());
+  const grid = document.getElementById('stats');
+  grid.innerHTML = '';
+  for (const s of r.rows.slice(0, 8)) {
+    const div = document.createElement('div');
+    div.className = 'stat';
+    div.innerHTML = '<div class="label">'+esc(s.name)+'</div><div class="value">'+s.n.toLocaleString()+'</div><div class="sub">'+s.users+' unique users</div>';
+    grid.appendChild(div);
+  }
+}
+
+function resetFilters() {
+  document.getElementById('filter-name').value = '';
+  document.getElementById('filter-version').value = '';
+  document.getElementById('filter-user').value = '';
+  loadEvents();
+}
+
+// ===== SSE =====
+function connectSSE() {
+  const es = new EventSource('/api/events/live');
+  es.onmessage = (e) => {
+    const pill = document.getElementById('conn');
+    pill.textContent = 'Live · connected';
+    pill.classList.remove('pill-off'); pill.classList.add('pill-live');
+    try {
+      const ev = JSON.parse(e.data);
+      const tbody = document.getElementById('events-body');
+      if (document.getElementById('tab-feed').style.display !== 'none') {
+        renderEvent(ev, tbody, true);
+      }
+    } catch {}
+  };
+  es.onerror = () => {
+    const pill = document.getElementById('conn');
+    pill.textContent = 'Reconnecting…';
+    pill.classList.remove('pill-live'); pill.classList.add('pill-off');
+  };
+}
+
+// ===== rules =====
+async function loadRules() {
+  const r = await fetch('/api/rules').then(r=>r.json());
+  RULES = r.rules || [];
+  const grid = document.getElementById('rules-grid');
+  grid.innerHTML = '';
+  if (!RULES.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><h4>No rules yet</h4><div>Click New rule to set up your first alert.</div></div>'; return; }
+  for (const rule of RULES) {
+    const card = document.createElement('div');
+    card.className = 'rule-card';
+    const sev = rule.severity==='red'?'badge-red':rule.severity==='yellow'?'badge-yellow':'badge-green';
+    card.innerHTML =
+      '<h4>'+esc(rule.name)+' <span class="badge '+sev+'">'+rule.severity+'</span></h4>' +
+      '<div class="rule-desc">'+esc(rule.description || '')+'</div>' +
+      '<div class="rule-meta">' +
+        '<div class="m"><span>Events</span><b>'+esc((rule.events||[]).join(', '))+'</b></div>' +
+        '<div class="m"><span>Window</span><b>'+rule.window_min+'m</b></div>' +
+        '<div class="m"><span>Threshold</span><b>≥'+rule.threshold+'</b></div>' +
+        '<div class="m"><span>Cooldown</span><b>'+rule.cooldown_min+'m</b></div>' +
+        '<div class="m"><span>Channels</span><b>'+esc((rule.channels||[]).join(', ') || '—')+'</b></div>' +
+        '<div class="m"><span>Status</span><b style="color:'+(rule.enabled?'var(--green)':'var(--muted)')+'">'+(rule.enabled?'ACTIVE':'DISABLED')+'</b></div>' +
+      '</div>' +
+      '<div class="rule-actions">' +
+        '<button class="btn btn-primary btn-sm" onclick="editRule(\''+rule.id+'\')">Edit</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="toggleRule(\''+rule.id+'\')">'+(rule.enabled?'Disable':'Enable')+'</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRule(\''+rule.id+'\')">Delete</button>' +
+      '</div>';
+    grid.appendChild(card);
+  }
+}
+
+function editRule(id) {
+  const rule = id ? RULES.find(r => r.id === id) : {};
+  document.getElementById('modal-title').textContent = id ? 'Edit rule' : 'New rule';
+  document.getElementById('r-id').value = rule.id || '';
+  document.getElementById('r-name').value = rule.name || '';
+  document.getElementById('r-desc').value = rule.description || '';
+  document.getElementById('r-events').value = (rule.events||[]).join(', ');
+  document.getElementById('r-window').value = rule.window_min || 10;
+  document.getElementById('r-threshold').value = rule.threshold || 3;
+  document.getElementById('r-cooldown').value = rule.cooldown_min || 30;
+  document.getElementById('r-severity').value = rule.severity || 'red';
+  document.getElementById('r-versions').value = (rule.app_versions||[]).join(', ');
+  document.getElementById('r-error-contains').value = (rule.filter_props && rule.filter_props.error_contains) || '';
+  document.getElementById('r-ch-telegram').checked = (rule.channels||[]).includes('telegram');
+  document.getElementById('r-ch-slack').checked = (rule.channels||[]).includes('slack');
+  document.getElementById('r-ch-webhook').checked = (rule.channels||[]).includes('webhook');
+  document.getElementById('r-template').value = rule.message_template || '';
+  document.getElementById('r-enabled').checked = rule.enabled !== false;
+  document.getElementById('modal-rule').classList.add('active');
+}
+
+function closeRule() { document.getElementById('modal-rule').classList.remove('active'); }
+
+async function saveRule() {
+  const id = document.getElementById('r-id').value;
+  const body = {
+    name: document.getElementById('r-name').value,
+    description: document.getElementById('r-desc').value,
+    events: document.getElementById('r-events').value.split(',').map(s=>s.trim()).filter(Boolean),
+    window_min: parseInt(document.getElementById('r-window').value, 10) || 10,
+    threshold: parseInt(document.getElementById('r-threshold').value, 10) || 1,
+    cooldown_min: parseInt(document.getElementById('r-cooldown').value, 10) || 30,
+    severity: document.getElementById('r-severity').value,
+    app_versions: document.getElementById('r-versions').value.split(',').map(s=>s.trim()).filter(Boolean),
+    filter_props: { error_contains: document.getElementById('r-error-contains').value },
+    channels: [
+      document.getElementById('r-ch-telegram').checked ? 'telegram' : null,
+      document.getElementById('r-ch-slack').checked ? 'slack' : null,
+      document.getElementById('r-ch-webhook').checked ? 'webhook' : null,
+    ].filter(Boolean),
+    message_template: document.getElementById('r-template').value,
+    enabled: document.getElementById('r-enabled').checked,
+  };
+  const url = id ? '/api/rules/' + encodeURIComponent(id) : '/api/rules';
+  const method = id ? 'PUT' : 'POST';
+  await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  closeRule();
+  loadRules();
+}
+
+async function toggleRule(id) {
+  const rule = RULES.find(r => r.id === id);
+  if (!rule) return;
+  await fetch('/api/rules/' + encodeURIComponent(id), { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: !rule.enabled }) });
+  loadRules();
+}
+
+async function deleteRule(id) {
+  if (!confirm('Delete this rule?')) return;
+  await fetch('/api/rules/' + encodeURIComponent(id), { method: 'DELETE' });
+  loadRules();
+}
+
+// ===== alarms =====
+async function loadAlarms() {
+  const r = await fetch('/api/alarms').then(r=>r.json());
+  const el = document.getElementById('alarms-list');
+  if (!r.alarms || !r.alarms.length) { el.innerHTML = '<div class="empty"><h4>No alarms fired</h4><div>When a rule crosses its threshold, it lands here.</div></div>'; return; }
+  let html = '<table><thead><tr><th style="padding-left:20px">Time</th><th>Rule</th><th>Severity</th><th>Message</th><th style="text-align:right">Count</th><th style="padding-right:20px">Channels</th></tr></thead><tbody>';
+  for (const a of r.alarms) {
+    const sev = a.severity==='red'?'badge-red':a.severity==='yellow'?'badge-yellow':'badge-green';
+    html += '<tr><td class="mono small">'+(a.fired_at||'').replace('T',' ').slice(5,19)+'</td>' +
+      '<td>'+esc(a.rule_name||'')+'</td>' +
+      '<td><span class="badge '+sev+'">'+a.severity+'</span></td>' +
+      '<td>'+esc(a.message||'')+'</td>' +
+      '<td class="mono" style="text-align:right">'+(a.count||0)+'</td>' +
+      '<td class="mono small">'+esc((a.channels||[]).join(', '))+'</td></tr>';
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ===== integrations =====
+async function loadIntegrations() {
+  const r = await fetch('/api/integrations').then(r=>r.json());
+  const I = r.integrations || {};
+  document.getElementById('tg-token').value = (I.telegram||{}).bot_token || '';
+  document.getElementById('tg-chat').value = (I.telegram||{}).chat_id || '';
+  document.getElementById('tg-enabled').checked = !!(I.telegram||{}).enabled;
+  document.getElementById('sl-webhook').value = (I.slack||{}).webhook_url || '';
+  document.getElementById('sl-enabled').checked = !!(I.slack||{}).enabled;
+  document.getElementById('wh-url').value = (I.webhook||{}).url || '';
+  document.getElementById('wh-enabled').checked = !!(I.webhook||{}).enabled;
+}
+
+async function saveIntegrations() {
+  const body = {
+    telegram: { bot_token: document.getElementById('tg-token').value.trim(), chat_id: document.getElementById('tg-chat').value.trim(), enabled: document.getElementById('tg-enabled').checked },
+    slack: { webhook_url: document.getElementById('sl-webhook').value.trim(), enabled: document.getElementById('sl-enabled').checked },
+    webhook: { url: document.getElementById('wh-url').value.trim(), enabled: document.getElementById('wh-enabled').checked },
+  };
+  await fetch('/api/integrations', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  toast('Saved');
+}
+
+async function testIntegration(channel) {
+  const r = await fetch('/api/integrations/test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ channel }) }).then(r=>r.json());
+  toast(r.ok ? 'Test sent to '+channel : 'Failed: ' + (r.error||''));
+}
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel);color:var(--ink);padding:12px 20px;border-radius:10px;border:1px solid var(--border-strong);z-index:200;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+function esc(s) { return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// init
+(async () => {
+  await loadMe();
+  loadEvents();
+  connectSSE();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>pulsefy.tools — event pulse</title>
+<style>
+  :root {
+    --bg: #0a0a12;
+    --panel: #12121e;
+    --border: #22222e;
+    --ink: #f4f4f8;
+    --muted: #8888a0;
+    --accent: #ff7a1f;
+    --accent-soft: #ff7a1f18;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --blue: #3b82f6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5; }
+  header { border-bottom: 1px solid var(--border); padding: 14px 20px; background: rgba(10,10,18,0.85); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
+  header h1 { margin: 0; font-size: 18px; font-weight: 900; display: flex; align-items: center; gap: 10px; }
+  header h1 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  header .subtitle { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: auto; }
+  header .row { display: flex; align-items: center; gap: 16px; }
+  nav { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid var(--border); }
+  nav button { background: none; border: 0; color: var(--muted); padding: 12px 14px; cursor: pointer; font-size: 13px; font-weight: 600; border-bottom: 2px solid transparent; }
+  nav button:hover { color: var(--ink); }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+  .stat-value { font-size: 24px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+  .panel-hdr { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .panel-hdr h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .panel-body { padding: 12px 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th { font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10.5px; }
+  td.mono { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 12px; }
+  td.small { color: var(--muted); font-size: 11px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .badge-red { background: #ef444422; color: var(--red); }
+  .badge-yellow { background: #eab30822; color: var(--yellow); }
+  .badge-green { background: #22c55e22; color: var(--green); }
+  .badge-blue { background: #3b82f622; color: var(--blue); }
+  .badge-gray { background: #88889022; color: var(--muted); }
+  button.btn, .btn { background: var(--accent); color: white; border: 0; padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; }
+  button.btn:hover { opacity: 0.9; }
+  button.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink); }
+  button.btn-danger { background: var(--red); }
+  button.btn-sm { padding: 4px 10px; font-size: 11.5px; }
+  input, select, textarea { background: var(--bg); color: var(--ink); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 13px; font-family: inherit; width: 100%; }
+  input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--accent); }
+  label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .field { margin-bottom: 12px; }
+  .filters { display: flex; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .filters input, .filters select { width: auto; min-width: 120px; }
+  .rules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .rule-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .rule-card h4 { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .rule-card .rule-desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .rule-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; font-size: 11.5px; color: var(--muted); }
+  .rule-meta .m { display: flex; gap: 6px; }
+  .rule-meta .m b { color: var(--ink); font-weight: 600; }
+  .rule-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .modal-bg.active { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; width: 520px; max-height: 90vh; overflow: auto; }
+  .modal h3 { margin: 0 0 12px 0; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .live-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--green); border-radius: 10px; font-size: 10px; color: white; font-weight: 700; }
+  .live-badge::before { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; animation: pulse 1.5s infinite; }
+  #events-body tr { animation: slideIn 0.3s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1><span class="dot"></span>pulsefy.tools</h1>
+    <span class="subtitle" id="conn">connecting…</span>
+  </div>
+</header>
+<nav>
+  <button class="tab-btn active" data-tab="feed">📊 Feed</button>
+  <button class="tab-btn" data-tab="rules">🚨 Rules</button>
+  <button class="tab-btn" data-tab="alarms">🔔 Alarms</button>
+  <button class="tab-btn" data-tab="integrations">🔌 Integrations</button>
+</nav>
+<main>
+
+<!-- FEED -->
+<section id="tab-feed">
+  <div class="grid" id="stats"></div>
+  <div class="panel">
+    <div class="panel-hdr">
+      <h3>Event Feed <span class="live-badge">LIVE</span></h3>
+      <div>
+        <label style="display:inline;margin-right:8px">Süre:</label>
+        <select id="feed-since" style="width:auto">
+          <option value="60">Son 1s</option>
+          <option value="360">Son 6s</option>
+          <option value="1440" selected>Son 24s</option>
+          <option value="4320">Son 3g</option>
+        </select>
+      </div>
+    </div>
+    <div class="filters">
+      <input id="filter-name" placeholder="Event adı (ör. subscribe_fail)"/>
+      <input id="filter-version" placeholder="App version"/>
+      <input id="filter-user" placeholder="User id (kısmi)"/>
+      <button class="btn btn-sm" onclick="loadEvents()">Filtrele</button>
+      <button class="btn btn-sm btn-ghost" onclick="resetFilters()">Temizle</button>
+    </div>
+    <div id="events-table-wrap">
+      <table>
+        <thead><tr><th style="width:120px">Zaman</th><th style="width:180px">Event</th><th style="width:60px">App v.</th><th style="width:60px">Ülke</th><th>User</th><th>Props</th></tr></thead>
+        <tbody id="events-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- RULES -->
+<section id="tab-rules" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h2 style="margin:0;font-size:18px">Alarm Kuralları</h2>
+    <button class="btn" onclick="editRule(null)">+ Yeni Kural</button>
+  </div>
+  <div id="rules-grid" class="rules-grid"></div>
+</section>
+
+<!-- ALARMS -->
+<section id="tab-alarms" style="display:none">
+  <div class="panel">
+    <div class="panel-hdr"><h3>Fired Alarms (son 100)</h3></div>
+    <div id="alarms-list"></div>
+  </div>
+</section>
+
+<!-- INTEGRATIONS -->
+<section id="tab-integrations" style="display:none">
+  <h2 style="font-size:18px">Entegrasyonlar</h2>
+  <div class="panel">
+    <div class="panel-hdr"><h3>Telegram</h3></div>
+    <div class="panel-body">
+      <div class="field"><label>Bot Token</label><input id="tg-token" placeholder="123456:ABCDEF..."/></div>
+      <div class="field"><label>Chat ID</label><input id="tg-chat" placeholder="-1001234567890 veya kullanıcı ID"/></div>
+      <div class="field"><label class="toggle"><input type="checkbox" id="tg-enabled"/> Aktif</label></div>
+      <button class="btn" onclick="saveIntegrations()">Kaydet</button>
+      <button class="btn btn-ghost" onclick="testIntegration('telegram')">Test Mesajı Gönder</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-hdr"><h3>Slack</h3></div>
+    <div class="panel-body">
+      <div class="field"><label>Incoming Webhook URL</label><input id="sl-webhook" placeholder="https://hooks.slack.com/services/..."/></div>
+      <div class="field"><label class="toggle"><input type="checkbox" id="sl-enabled"/> Aktif</label></div>
+      <button class="btn" onclick="saveIntegrations()">Kaydet</button>
+      <button class="btn btn-ghost" onclick="testIntegration('slack')">Test Mesajı Gönder</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-hdr"><h3>Generic Webhook</h3></div>
+    <div class="panel-body">
+      <div class="field"><label>URL</label><input id="wh-url" placeholder="https://your-endpoint.com/alarm"/></div>
+      <div class="field"><label class="toggle"><input type="checkbox" id="wh-enabled"/> Aktif</label></div>
+      <button class="btn" onclick="saveIntegrations()">Kaydet</button>
+      <button class="btn btn-ghost" onclick="testIntegration('webhook')">Test Payload Gönder</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- Modal: Rule editor -->
+<div class="modal-bg" id="modal-rule">
+  <div class="modal">
+    <h3 id="modal-title">Kural Düzenle</h3>
+    <input type="hidden" id="r-id"/>
+    <div class="field"><label>Ad</label><input id="r-name"/></div>
+    <div class="field"><label>Açıklama</label><input id="r-desc"/></div>
+    <div class="field"><label>Event'ler (virgülle ayır)</label><input id="r-events" placeholder="subscribe_fail, paywall_offerings_error"/></div>
+    <div class="row2">
+      <div class="field"><label>Pencere (dakika)</label><input id="r-window" type="number" value="10"/></div>
+      <div class="field"><label>Eşik (adet)</label><input id="r-threshold" type="number" value="3"/></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Cooldown (dakika)</label><input id="r-cooldown" type="number" value="30"/></div>
+      <div class="field"><label>Severity</label><select id="r-severity"><option value="red">Red (kritik)</option><option value="yellow">Yellow (uyarı)</option><option value="green">Green (bilgi)</option></select></div>
+    </div>
+    <div class="field"><label>App versions (virgül, boş = hepsi)</label><input id="r-versions" placeholder="1.1.0, 1.0.9"/></div>
+    <div class="field"><label>Props filter: error içerir</label><input id="r-error-contains" placeholder="receipt not valid"/></div>
+    <div class="field"><label>Kanallar</label>
+      <label class="toggle"><input type="checkbox" id="r-ch-telegram"/> Telegram</label>
+      <label class="toggle" style="margin-left:16px"><input type="checkbox" id="r-ch-slack"/> Slack</label>
+      <label class="toggle" style="margin-left:16px"><input type="checkbox" id="r-ch-webhook"/> Webhook</label>
+    </div>
+    <div class="field"><label>Mesaj Şablonu</label><textarea id="r-template" rows="3" placeholder="🔴 {count} events in {window} min: {last_error}"></textarea></div>
+    <div class="field"><label class="toggle"><input type="checkbox" id="r-enabled" checked/> Aktif</label></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-ghost" onclick="closeRule()">İptal</button>
+      <button class="btn" onclick="saveRule()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let RULES = [];
+let INTEG = {};
+
+// ============ tab switching ============
+document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab-btn').forEach(x => x.classList.toggle('active', x === b));
+  const tab = b.dataset.tab;
+  ['feed','rules','alarms','integrations'].forEach(t => document.getElementById('tab-'+t).style.display = (t===tab)?'block':'none');
+  if (tab === 'rules') loadRules();
+  if (tab === 'alarms') loadAlarms();
+  if (tab === 'integrations') loadIntegrations();
+});
+
+// ============ feed ============
+async function loadEvents() {
+  const since = document.getElementById('feed-since').value;
+  const name = document.getElementById('filter-name').value.trim();
+  const version = document.getElementById('filter-version').value.trim();
+  const user = document.getElementById('filter-user').value.trim();
+  const qs = new URLSearchParams({ since_min: since });
+  if (name) qs.set('name', name);
+  if (version) qs.set('app_version', version);
+  if (user) qs.set('user_id', user);
+  const r = await fetch(API + '/api/events?' + qs.toString()).then(r=>r.json());
+  const tbody = document.getElementById('events-body');
+  tbody.innerHTML = '';
+  for (const e of r.rows) renderEvent(e, tbody, false);
+  loadStats(since);
+}
+
+function renderEvent(e, tbody, prepend) {
+  const tr = document.createElement('tr');
+  const timeShort = (e.created_at || '').replace('T',' ').slice(5, 19);
+  const propsPreview = String(e.props || '').slice(0, 200);
+  tr.innerHTML =
+    '<td class="mono small">'+timeShort+'</td>' +
+    '<td><span class="badge '+badgeForEvent(e.name)+'">'+e.name+'</span></td>' +
+    '<td class="mono small">'+(e.app_version||'-')+'</td>' +
+    '<td class="mono small">'+(e.country||'-')+'</td>' +
+    '<td class="mono small">'+String(e.user_id||'').slice(0,32)+'</td>' +
+    '<td class="mono small">'+propsPreview+'</td>';
+  if (prepend) tbody.insertBefore(tr, tbody.firstChild);
+  else tbody.appendChild(tr);
+  while (tbody.children.length > 200) tbody.removeChild(tbody.lastChild);
+}
+
+function badgeForEvent(name) {
+  if (/fail|error/i.test(name)) return 'badge-red';
+  if (/cancel/i.test(name)) return 'badge-yellow';
+  if (/success/i.test(name)) return 'badge-green';
+  if (/attempt|view/i.test(name)) return 'badge-blue';
+  return 'badge-gray';
+}
+
+async function loadStats(since) {
+  const r = await fetch(API + '/api/events/summary?since_min=' + since).then(r=>r.json());
+  const grid = document.getElementById('stats');
+  grid.innerHTML = '';
+  for (const s of r.rows.slice(0, 8)) {
+    const div = document.createElement('div');
+    div.className = 'stat';
+    div.innerHTML = '<div class="stat-label">'+s.name+'</div><div class="stat-value">'+s.n.toLocaleString()+'</div><div class="stat-sub">'+s.users+' unique</div>';
+    grid.appendChild(div);
+  }
+}
+
+function resetFilters() {
+  document.getElementById('filter-name').value = '';
+  document.getElementById('filter-version').value = '';
+  document.getElementById('filter-user').value = '';
+  loadEvents();
+}
+
+// ============ live SSE ============
+function connectSSE() {
+  const es = new EventSource(API + '/api/events/live');
+  es.onmessage = (e) => {
+    document.getElementById('conn').textContent = 'live · connected';
+    document.getElementById('conn').style.color = '#22c55e';
+    try {
+      const ev = JSON.parse(e.data);
+      const tbody = document.getElementById('events-body');
+      renderEvent(ev, tbody, true);
+    } catch {}
+  };
+  es.onerror = () => {
+    document.getElementById('conn').textContent = 'reconnecting…';
+    document.getElementById('conn').style.color = '#eab308';
+  };
+}
+
+// ============ rules ============
+async function loadRules() {
+  const r = await fetch(API + '/api/rules').then(r=>r.json());
+  RULES = r.rules || [];
+  const grid = document.getElementById('rules-grid');
+  grid.innerHTML = '';
+  for (const rule of RULES) {
+    const card = document.createElement('div');
+    card.className = 'rule-card';
+    const sev = rule.severity==='red'?'badge-red':rule.severity==='yellow'?'badge-yellow':'badge-green';
+    card.innerHTML =
+      '<h4>'+escapeHtml(rule.name)+' <span class="badge '+sev+'">'+rule.severity+'</span></h4>' +
+      '<div class="rule-desc">'+escapeHtml(rule.description || '')+'</div>' +
+      '<div class="rule-meta">' +
+        '<span class="m">Events: <b>'+(rule.events||[]).join(', ')+'</b></span>' +
+        '<span class="m">Window: <b>'+rule.window_min+'m</b></span>' +
+        '<span class="m">Threshold: <b>&gt;='+rule.threshold+'</b></span>' +
+        '<span class="m">Cooldown: <b>'+rule.cooldown_min+'m</b></span>' +
+        '<span class="m">Kanallar: <b>'+(rule.channels||[]).join(', ')+'</b></span>' +
+        '<span class="m">Durum: <b style="color:'+(rule.enabled?'#22c55e':'#8888a0')+'">'+(rule.enabled?'AKTİF':'KAPALI')+'</b></span>' +
+      '</div>' +
+      '<div class="rule-actions">' +
+        '<button class="btn btn-sm" onclick="editRule(\''+rule.id+'\')">Düzenle</button>' +
+        '<button class="btn btn-sm btn-ghost" onclick="toggleRule(\''+rule.id+'\')">'+(rule.enabled?'Kapat':'Aç')+'</button>' +
+        '<button class="btn btn-sm btn-danger" onclick="deleteRule(\''+rule.id+'\')">Sil</button>' +
+      '</div>';
+    grid.appendChild(card);
+  }
+  if (RULES.length === 0) grid.innerHTML = '<div class="empty">Henüz kural yok. + Yeni Kural tıkla.</div>';
+}
+
+function editRule(id) {
+  const rule = id ? RULES.find(r => r.id === id) : {};
+  document.getElementById('modal-title').textContent = id ? 'Kural Düzenle' : 'Yeni Kural';
+  document.getElementById('r-id').value = rule.id || '';
+  document.getElementById('r-name').value = rule.name || '';
+  document.getElementById('r-desc').value = rule.description || '';
+  document.getElementById('r-events').value = (rule.events||[]).join(', ');
+  document.getElementById('r-window').value = rule.window_min || 10;
+  document.getElementById('r-threshold').value = rule.threshold || 3;
+  document.getElementById('r-cooldown').value = rule.cooldown_min || 30;
+  document.getElementById('r-severity').value = rule.severity || 'red';
+  document.getElementById('r-versions').value = (rule.app_versions||[]).join(', ');
+  document.getElementById('r-error-contains').value = (rule.filter_props && rule.filter_props.error_contains) || '';
+  document.getElementById('r-ch-telegram').checked = (rule.channels||[]).includes('telegram');
+  document.getElementById('r-ch-slack').checked = (rule.channels||[]).includes('slack');
+  document.getElementById('r-ch-webhook').checked = (rule.channels||[]).includes('webhook');
+  document.getElementById('r-template').value = rule.message_template || '';
+  document.getElementById('r-enabled').checked = rule.enabled !== false;
+  document.getElementById('modal-rule').classList.add('active');
+}
+
+function closeRule() { document.getElementById('modal-rule').classList.remove('active'); }
+
+async function saveRule() {
+  const id = document.getElementById('r-id').value;
+  const body = {
+    name: document.getElementById('r-name').value,
+    description: document.getElementById('r-desc').value,
+    events: document.getElementById('r-events').value.split(',').map(s=>s.trim()).filter(Boolean),
+    window_min: parseInt(document.getElementById('r-window').value, 10) || 10,
+    threshold: parseInt(document.getElementById('r-threshold').value, 10) || 1,
+    cooldown_min: parseInt(document.getElementById('r-cooldown').value, 10) || 30,
+    severity: document.getElementById('r-severity').value,
+    app_versions: document.getElementById('r-versions').value.split(',').map(s=>s.trim()).filter(Boolean),
+    filter_props: { error_contains: document.getElementById('r-error-contains').value },
+    channels: [
+      document.getElementById('r-ch-telegram').checked ? 'telegram' : null,
+      document.getElementById('r-ch-slack').checked ? 'slack' : null,
+      document.getElementById('r-ch-webhook').checked ? 'webhook' : null,
+    ].filter(Boolean),
+    message_template: document.getElementById('r-template').value,
+    enabled: document.getElementById('r-enabled').checked,
+  };
+  if (id) {
+    await fetch(API + '/api/rules/' + encodeURIComponent(id), { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  } else {
+    await fetch(API + '/api/rules', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  }
+  closeRule();
+  loadRules();
+}
+
+async function toggleRule(id) {
+  const rule = RULES.find(r => r.id === id);
+  if (!rule) return;
+  await fetch(API + '/api/rules/' + encodeURIComponent(id), { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: !rule.enabled }) });
+  loadRules();
+}
+
+async function deleteRule(id) {
+  if (!confirm('Kuralı sil?')) return;
+  await fetch(API + '/api/rules/' + encodeURIComponent(id), { method: 'DELETE' });
+  loadRules();
+}
+
+// ============ alarms ============
+async function loadAlarms() {
+  const r = await fetch(API + '/api/alarms').then(r=>r.json());
+  const el = document.getElementById('alarms-list');
+  if (!r.alarms || !r.alarms.length) { el.innerHTML = '<div class="empty">Henüz tetiklenen alarm yok. Kural + eşik geçildiğinde burada listelenir.</div>'; return; }
+  el.innerHTML = '';
+  const table = document.createElement('table');
+  table.innerHTML = '<thead><tr><th>Zaman</th><th>Kural</th><th>Sev</th><th>Mesaj</th><th>Adet</th><th>Kanallar</th></tr></thead><tbody></tbody>';
+  const tb = table.querySelector('tbody');
+  for (const a of r.alarms) {
+    const sev = a.severity==='red'?'badge-red':a.severity==='yellow'?'badge-yellow':'badge-green';
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="mono small">'+(a.fired_at||'').replace('T',' ').slice(5,19)+'</td>' +
+      '<td>'+escapeHtml(a.rule_name||'')+'</td>' +
+      '<td><span class="badge '+sev+'">'+a.severity+'</span></td>' +
+      '<td>'+escapeHtml(a.message||'')+'</td>' +
+      '<td class="mono">'+(a.count||0)+'</td>' +
+      '<td class="mono small">'+(a.channels||[]).join(',')+'</td>';
+    tb.appendChild(tr);
+  }
+  el.appendChild(table);
+}
+
+// ============ integrations ============
+async function loadIntegrations() {
+  const r = await fetch(API + '/api/integrations').then(r=>r.json());
+  INTEG = r.integrations || {};
+  document.getElementById('tg-token').value = (INTEG.telegram||{}).bot_token || '';
+  document.getElementById('tg-chat').value = (INTEG.telegram||{}).chat_id || '';
+  document.getElementById('tg-enabled').checked = !!(INTEG.telegram||{}).enabled;
+  document.getElementById('sl-webhook').value = (INTEG.slack||{}).webhook_url || '';
+  document.getElementById('sl-enabled').checked = !!(INTEG.slack||{}).enabled;
+  document.getElementById('wh-url').value = (INTEG.webhook||{}).url || '';
+  document.getElementById('wh-enabled').checked = !!(INTEG.webhook||{}).enabled;
+}
+
+async function saveIntegrations() {
+  const body = {
+    telegram: { bot_token: document.getElementById('tg-token').value.trim(), chat_id: document.getElementById('tg-chat').value.trim(), enabled: document.getElementById('tg-enabled').checked },
+    slack: { webhook_url: document.getElementById('sl-webhook').value.trim(), enabled: document.getElementById('sl-enabled').checked },
+    webhook: { url: document.getElementById('wh-url').value.trim(), enabled: document.getElementById('wh-enabled').checked },
+  };
+  await fetch(API + '/api/integrations', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  alert('Kaydedildi');
+}
+
+async function testIntegration(channel) {
+  const r = await fetch(API + '/api/integrations/test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ channel }) }).then(r=>r.json());
+  alert(r.ok ? 'Test gönderildi ('+channel+')' : 'Hata: ' + (r.error||''));
+}
+
+function escapeHtml(s) { return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+
+document.getElementById('feed-since').onchange = loadEvents;
+loadEvents();
+connectSSE();
+</script>
+</body>
+</html>

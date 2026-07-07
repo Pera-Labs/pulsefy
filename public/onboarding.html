@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Add your first app — pulsefy</title>
+<style>
+  :root { --bg:#0a0a12;--bg-2:#12121e;--panel:#1a1a26;--border:rgba(255,255,255,0.08);--border-strong:rgba(255,255,255,0.14);--ink:#f8f8fc;--ink-2:#c8c8d4;--muted:#7c7c92;--accent:#ff7a1f;--accent-2:#ffb84d;--accent-soft:#ff7a1f20;--red:#ef4444; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); text-decoration: none; }
+  nav { padding: 18px 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; color: var(--ink); }
+  nav .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.6} }
+  main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px; position: relative; overflow: hidden; }
+  main::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at top, var(--accent-soft), transparent 60%); pointer-events: none; }
+  .wrap { max-width: 520px; width: 100%; position: relative; }
+  .step { color: var(--muted); font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; }
+  h1 { font-size: 32px; font-weight: 800; margin: 0 0 10px; letter-spacing: -0.8px; }
+  .sub { color: var(--ink-2); font-size: 16px; margin-bottom: 32px; line-height: 1.55; }
+  .card { padding: 28px; background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 14px; margin-bottom: 20px; }
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  input { width: 100%; padding: 11px 14px; background: var(--bg); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 9px; font-family: inherit; font-size: 14px; transition: border-color 0.15s; }
+  input:focus { outline: 0; border-color: var(--accent); }
+  input.mono { font-family: 'SF Mono', ui-monospace, Consolas, monospace; font-size: 13px; }
+  .hint { color: var(--muted); font-size: 12.5px; margin-top: 6px; line-height: 1.5; }
+  .btn { width: 100%; padding: 13px; background: var(--accent); color: white; border: 0; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.15s; margin-top: 8px; }
+  .btn:hover { background: var(--accent-2); color: var(--bg); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .err { padding: 10px 14px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 9px; color: #fca5a5; font-size: 13px; margin-bottom: 16px; display: none; }
+  .err.show { display: block; }
+  .info { padding: 14px; background: var(--accent-soft); border: 1px solid rgba(255,122,31,0.25); border-radius: 10px; color: var(--ink-2); font-size: 13px; line-height: 1.6; margin-bottom: 20px; }
+  .info b { color: var(--accent); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="brand"><span class="dot"></span>pulsefy</a>
+  <a href="#" onclick="logout()" style="color:var(--muted);font-size:13px">Sign out</a>
+</nav>
+<main>
+  <div class="wrap">
+    <div class="step">Step 1 of 1 · Onboarding</div>
+    <h1>Add your first app</h1>
+    <p class="sub">Link your pulsefy account to a source of events. Only events from apps you've claimed will show in your dashboard.</p>
+    <div class="card">
+      <div class="err" id="err"></div>
+      <div class="info"><b>Where do I get an app token?</b><br/>Every app that reports events to pulsefy has a 36-character UUID token. If you're already sending events through <b>searchads.tools</b>, the same <code style="color:var(--accent-2)">application_token</code> works here.</div>
+      <form onsubmit="doAdd(event)">
+        <div class="field">
+          <label>App display name</label>
+          <input id="name" required placeholder="e.g. ToneAdapt Production"/>
+          <div class="hint">İsim sadece sana özel görünür.</div>
+        </div>
+        <div class="field">
+          <label>App token</label>
+          <input id="token" class="mono" required placeholder="29b5e3fe-0d63-4860-8354-984cfa9d200c"/>
+          <div class="hint">Token'ı doğrulayacağım — ingestion kayıtlarında görünüyor olmalı.</div>
+        </div>
+        <button type="submit" class="btn" id="btn">Add app →</button>
+      </form>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:13px">Birden fazla app varsa sonra ayarlar'dan ekleyebilirsin.</p>
+  </div>
+</main>
+<script>
+async function doAdd(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('err');
+  err.classList.remove('show');
+  btn.disabled = true; btn.textContent = 'Verifying...';
+  const body = { display_name: document.getElementById('name').value.trim(), app_token: document.getElementById('token').value.trim() };
+  try {
+    const r = await fetch('/api/apps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (j.ok) window.location.href = '/app';
+    else { err.textContent = j.error || 'Failed'; err.classList.add('show'); }
+  } catch (e) { err.textContent = 'Network error'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Add app →';
+}
+async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/'; }
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sign in — pulsefy</title>
+<style>
+  :root {
+    --bg: #0a0a12; --bg-2: #12121e; --panel: #1a1a26;
+    --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
+    --ink: #f8f8fc; --ink-2: #c8c8d4; --muted: #7c7c92;
+    --accent: #ff7a1f; --accent-2: #ffb84d; --accent-soft: #ff7a1f20;
+    --red: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-2); }
+  nav { padding: 18px 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; color: var(--ink); }
+  nav .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.6} }
+
+  main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px; position: relative; overflow: hidden; }
+  main::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at top, var(--accent-soft), transparent 60%); pointer-events: none; }
+
+  .card { max-width: 420px; width: 100%; padding: 40px 32px; background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 16px; position: relative; }
+  .card h1 { font-size: 26px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.6px; }
+  .card .sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+
+  .tabs { display: flex; gap: 4px; padding: 4px; background: var(--bg); border-radius: 10px; margin-bottom: 24px; }
+  .tab { flex: 1; padding: 10px; background: transparent; border: 0; color: var(--muted); font-weight: 600; font-size: 14px; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+  .tab.active { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  input { width: 100%; padding: 11px 14px; background: var(--bg); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 9px; font-family: inherit; font-size: 15px; transition: border-color 0.15s; }
+  input:focus { outline: 0; border-color: var(--accent); background: var(--panel); }
+
+  .btn-submit { width: 100%; padding: 13px; background: var(--accent); color: white; border: 0; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.15s; margin-top: 8px; }
+  .btn-submit:hover { background: var(--accent-2); color: var(--bg); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .err { padding: 10px 14px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 9px; color: #fca5a5; font-size: 13px; margin-bottom: 16px; display: none; }
+  .err.show { display: block; }
+
+  .foot { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted); }
+
+  #register-fields { display: none; }
+  .mode-register #register-fields { display: block; }
+  .mode-register .field-name-required::before { content: "*"; color: var(--accent); margin-right: 3px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="brand"><span class="dot"></span>pulsefy</a>
+  <a href="/" style="color:var(--muted);font-size:14px">← Home</a>
+</nav>
+
+<main>
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" data-mode="login" onclick="setMode('login')">Sign in</button>
+      <button class="tab" data-mode="register" onclick="setMode('register')">Create account</button>
+    </div>
+
+    <h1 id="title">Welcome back</h1>
+    <p class="sub" id="subtitle">Sign in to see live events and manage alerts.</p>
+
+    <div class="err" id="err"></div>
+
+    <form id="form" onsubmit="doSubmit(event)">
+      <div id="register-fields">
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="name" autocomplete="name" placeholder="Your name"/>
+        </div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" autocomplete="email" required placeholder="you@example.com"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters"/>
+      </div>
+      <button type="submit" class="btn-submit" id="btn">Sign in</button>
+    </form>
+
+    <div class="foot">
+      <span id="foot-text">New here? </span>
+      <a href="#" onclick="toggleMode();return false" id="foot-link">Create an account</a>
+    </div>
+  </div>
+</main>
+
+<script>
+let mode = window.location.pathname === '/register' ? 'register' : 'login';
+
+function setMode(m) {
+  mode = m;
+  document.body.classList.toggle('mode-register', m === 'register');
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode === m));
+  document.getElementById('title').textContent = m === 'login' ? 'Welcome back' : 'Create your account';
+  document.getElementById('subtitle').textContent = m === 'login' ? 'Sign in to see live events and manage alerts.' : 'Start monitoring events in minutes. Free during beta.';
+  document.getElementById('btn').textContent = m === 'login' ? 'Sign in' : 'Create account';
+  document.getElementById('foot-text').textContent = m === 'login' ? 'New here? ' : 'Already have an account? ';
+  document.getElementById('foot-link').textContent = m === 'login' ? 'Create an account' : 'Sign in';
+  document.getElementById('password').setAttribute('autocomplete', m === 'login' ? 'current-password' : 'new-password');
+  document.getElementById('err').classList.remove('show');
+}
+
+function toggleMode() { setMode(mode === 'login' ? 'register' : 'login'); }
+
+async function doSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('err');
+  err.classList.remove('show');
+  btn.disabled = true;
+  const body = {
+    email: document.getElementById('email').value.trim(),
+    password: document.getElementById('password').value,
+  };
+  if (mode === 'register') body.name = document.getElementById('name').value.trim();
+  try {
+    const r = await fetch('/api/auth/' + mode, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    if (j.ok) {
+      window.location.href = '/app';
+    } else {
+      err.textContent = j.error || 'Failed';
+      err.classList.add('show');
+    }
+  } catch (e) {
+    err.textContent = 'Network error';
+    err.classList.add('show');
+  }
+  btn.disabled = false;
+}
+
+setMode(mode);
+</script>
+</body>
+</html>
