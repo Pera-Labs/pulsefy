@@ -82,6 +82,27 @@ CREATE TABLE IF NOT EXISTS apps (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_apps_user ON apps(user_id);
+CREATE TABLE IF NOT EXISTS rules (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT, description TEXT, events TEXT, app_versions TEXT, filter_props TEXT,
+  window_min INTEGER, threshold INTEGER, severity TEXT, channels TEXT, cooldown_min INTEGER,
+  message_template TEXT, enabled INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS integrations (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  telegram TEXT NOT NULL DEFAULT '{}', slack TEXT NOT NULL DEFAULT '{}', webhook TEXT NOT NULL DEFAULT '{}',
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS alarms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  rule_id TEXT, rule_name TEXT, severity TEXT, message TEXT, count INTEGER, window_min INTEGER,
+  last_error TEXT, fired_at TEXT NOT NULL, channels TEXT, sample_events TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_rules_user ON rules(user_id);
+CREATE INDEX IF NOT EXISTS idx_alarms_user ON alarms(user_id);
+CREATE INDEX IF NOT EXISTS idx_alarms_fired ON alarms(fired_at);
 `);
 
 function hashPassword(pw) { return crypto.createHash('sha256').update(pw + PW_SALT).digest('hex'); }
@@ -147,23 +168,118 @@ const DEFAULT_RULES = [
 ];
 const DEFAULT_INTEGRATIONS = { telegram: { enabled: false, bot_token: '', chat_id: '' }, slack: { enabled: false, webhook_url: '' }, webhook: { enabled: false, url: '' } };
 
-function loadRules() { return readJson(RULES_FILE, null) || (writeJson(RULES_FILE, DEFAULT_RULES), DEFAULT_RULES); }
-function loadIntegrations() { return readJson(INTEGRATIONS_FILE, null) || (writeJson(INTEGRATIONS_FILE, DEFAULT_INTEGRATIONS), DEFAULT_INTEGRATIONS); }
 function loadDedup() { return readJson(DEDUP_FILE, {}); }
 function saveDedup(d) { writeJson(DEDUP_FILE, d); }
 
-// ---------- rule engine (still global, per-user later) ----------
+// ---------- per-user rules / integrations / alarms (SQLite-backed) ----------
+
+function rowToRule(r) {
+  return {
+    id: r.id, user_id: r.user_id, name: r.name, description: r.description,
+    events: JSON.parse(r.events || '[]'), app_versions: JSON.parse(r.app_versions || '[]'),
+    filter_props: JSON.parse(r.filter_props || '{}'), window_min: r.window_min, threshold: r.threshold,
+    severity: r.severity, channels: JSON.parse(r.channels || '[]'), cooldown_min: r.cooldown_min,
+    message_template: r.message_template, enabled: !!r.enabled, created_at: r.created_at,
+  };
+}
+function getUserRules(userId) {
+  return sqliteQuery(PULSEFY_DB, `SELECT * FROM rules WHERE user_id = ${parseInt(userId, 10)} ORDER BY created_at DESC;`).map(rowToRule);
+}
+function getAllEnabledRules() {
+  return sqliteQuery(PULSEFY_DB, `SELECT * FROM rules WHERE enabled = 1;`).map(rowToRule);
+}
+function insertRule(userId, body) {
+  const id = 'rule-' + crypto.randomBytes(8).toString('hex');
+  const now = new Date().toISOString();
+  sqliteExec(PULSEFY_DB, `INSERT INTO rules(id, user_id, name, description, events, app_versions, filter_props, window_min, threshold, severity, channels, cooldown_min, message_template, enabled, created_at) VALUES(
+    '${sqlEscape(id)}', ${parseInt(userId, 10)}, '${sqlEscape(body.name || '')}', '${sqlEscape(body.description || '')}',
+    '${sqlEscape(JSON.stringify(body.events || []))}', '${sqlEscape(JSON.stringify(body.app_versions || []))}', '${sqlEscape(JSON.stringify(body.filter_props || {}))}',
+    ${parseInt(body.window_min, 10) || 15}, ${parseInt(body.threshold, 10) || 1}, '${sqlEscape(body.severity || 'yellow')}',
+    '${sqlEscape(JSON.stringify(body.channels || []))}', ${parseInt(body.cooldown_min, 10) || 30}, '${sqlEscape(body.message_template || '')}',
+    ${body.enabled === false ? 0 : 1}, '${now}');`);
+  return sqliteQuery(PULSEFY_DB, `SELECT * FROM rules WHERE id = '${sqlEscape(id)}' LIMIT 1;`).map(rowToRule)[0];
+}
+function updateRule(userId, id, body) {
+  const owned = sqliteQuery(PULSEFY_DB, `SELECT * FROM rules WHERE id = '${sqlEscape(id)}' AND user_id = ${parseInt(userId, 10)} LIMIT 1;`)[0];
+  if (!owned) return null;
+  const cur = rowToRule(owned);
+  const merged = Object.assign({}, cur, body, { id: cur.id, user_id: cur.user_id });
+  sqliteExec(PULSEFY_DB, `UPDATE rules SET name='${sqlEscape(merged.name || '')}', description='${sqlEscape(merged.description || '')}',
+    events='${sqlEscape(JSON.stringify(merged.events || []))}', app_versions='${sqlEscape(JSON.stringify(merged.app_versions || []))}',
+    filter_props='${sqlEscape(JSON.stringify(merged.filter_props || {}))}', window_min=${parseInt(merged.window_min, 10) || 15},
+    threshold=${parseInt(merged.threshold, 10) || 1}, severity='${sqlEscape(merged.severity || 'yellow')}',
+    channels='${sqlEscape(JSON.stringify(merged.channels || []))}', cooldown_min=${parseInt(merged.cooldown_min, 10) || 30},
+    message_template='${sqlEscape(merged.message_template || '')}', enabled=${merged.enabled === false ? 0 : 1}
+    WHERE id='${sqlEscape(id)}' AND user_id=${parseInt(userId, 10)};`);
+  return sqliteQuery(PULSEFY_DB, `SELECT * FROM rules WHERE id = '${sqlEscape(id)}' LIMIT 1;`).map(rowToRule)[0];
+}
+function deleteRule(userId, id) {
+  sqliteExec(PULSEFY_DB, `DELETE FROM rules WHERE id = '${sqlEscape(id)}' AND user_id = ${parseInt(userId, 10)};`);
+}
+function seedDefaultRulesForUser(userId) {
+  for (const r of DEFAULT_RULES) insertRule(userId, r);
+}
+
+function rowToIntegrations(r) {
+  if (!r) return JSON.parse(JSON.stringify(DEFAULT_INTEGRATIONS));
+  try { return { telegram: JSON.parse(r.telegram || '{}'), slack: JSON.parse(r.slack || '{}'), webhook: JSON.parse(r.webhook || '{}') }; }
+  catch { return JSON.parse(JSON.stringify(DEFAULT_INTEGRATIONS)); }
+}
+function getUserIntegrations(userId) {
+  const row = sqliteQuery(PULSEFY_DB, `SELECT * FROM integrations WHERE user_id = ${parseInt(userId, 10)} LIMIT 1;`)[0];
+  return rowToIntegrations(row);
+}
+function saveUserIntegrations(userId, obj) {
+  const now = new Date().toISOString();
+  const merged = Object.assign({}, DEFAULT_INTEGRATIONS, obj);
+  sqliteExec(PULSEFY_DB, `INSERT INTO integrations(user_id, telegram, slack, webhook, updated_at) VALUES(${parseInt(userId, 10)}, '${sqlEscape(JSON.stringify(merged.telegram || {}))}', '${sqlEscape(JSON.stringify(merged.slack || {}))}', '${sqlEscape(JSON.stringify(merged.webhook || {}))}', '${now}')
+    ON CONFLICT(user_id) DO UPDATE SET telegram=excluded.telegram, slack=excluded.slack, webhook=excluded.webhook, updated_at=excluded.updated_at;`);
+  return merged;
+}
+function seedDefaultIntegrationsForUser(userId) {
+  saveUserIntegrations(userId, DEFAULT_INTEGRATIONS);
+}
+
+function insertAlarm(userId, alarm) {
+  sqliteExec(PULSEFY_DB, `INSERT INTO alarms(user_id, rule_id, rule_name, severity, message, count, window_min, last_error, fired_at, channels, sample_events) VALUES(
+    ${parseInt(userId, 10)}, '${sqlEscape(alarm.rule_id)}', '${sqlEscape(alarm.rule_name)}', '${sqlEscape(alarm.severity)}', '${sqlEscape(alarm.message)}',
+    ${parseInt(alarm.count, 10) || 0}, ${parseInt(alarm.window_min, 10) || 0}, '${sqlEscape(alarm.last_error || '')}', '${alarm.fired_at}',
+    '${sqlEscape(JSON.stringify(alarm.channels || []))}', '${sqlEscape(JSON.stringify(alarm.sample_events || []))}');`);
+}
+function getUserAlarms(userId, limit) {
+  const rows = sqliteQuery(PULSEFY_DB, `SELECT * FROM alarms WHERE user_id = ${parseInt(userId, 10)} ORDER BY id DESC LIMIT ${parseInt(limit, 10) || 100};`);
+  return rows.map(r => ({ rule_id: r.rule_id, rule_name: r.rule_name, severity: r.severity, message: r.message, count: r.count, window_min: r.window_min, last_error: r.last_error, fired_at: r.fired_at, channels: JSON.parse(r.channels || '[]'), sample_events: JSON.parse(r.sample_events || '[]') }));
+}
+
+// One-time migration: legacy global config/rules.json + integrations.json → earliest user's own rows
+function migrateLegacyGlobalConfig() {
+  const anyRules = sqliteQuery(PULSEFY_DB, `SELECT COUNT(*) as n FROM rules;`)[0];
+  if (anyRules && anyRules.n > 0) return;
+  const firstUser = sqliteQuery(PULSEFY_DB, `SELECT id FROM users ORDER BY id ASC LIMIT 1;`)[0];
+  if (!firstUser) return;
+  const legacyRules = readJson(RULES_FILE, null);
+  if (legacyRules && legacyRules.length) { for (const r of legacyRules) insertRule(firstUser.id, r); }
+  const legacyIntegrations = readJson(INTEGRATIONS_FILE, null);
+  if (legacyIntegrations) saveUserIntegrations(firstUser.id, legacyIntegrations);
+}
+migrateLegacyGlobalConfig();
+
+// ---------- rule engine (per-user: each rule scoped to its owner's claimed apps) ----------
 
 function evaluateRules() {
-  const rules = loadRules().filter(r => r.enabled);
+  const rules = getAllEnabledRules();
   const dedup = loadDedup();
-  const integrations = loadIntegrations();
   const now = Date.now();
+  const integrationsCache = new Map();
+  const accountIdsCache = new Map();
   for (const rule of rules) {
+    if (!accountIdsCache.has(rule.user_id)) accountIdsCache.set(rule.user_id, getUserAccountIds(rule.user_id));
+    const acctIds = accountIdsCache.get(rule.user_id);
+    if (!acctIds.length) continue; // owner has no claimed apps — nothing to scan
     const windowStart = new Date(now - rule.window_min * 60 * 1000).toISOString();
     const eventList = rule.events.map(e => `'${sqlEscape(e)}'`).join(',');
     if (!eventList) continue;
-    let sql = `SELECT created_at, user_id, name, props, app_version, bundle_id FROM events WHERE name IN (${eventList}) AND created_at >= '${windowStart}'`;
+    let sql = `SELECT created_at, user_id, name, props, app_version, bundle_id FROM events WHERE name IN (${eventList}) AND created_at >= '${windowStart}' AND account_id IN (${acctIds.join(',')})`;
     if (rule.app_versions && rule.app_versions.length) {
       const versList = rule.app_versions.map(v => `'${sqlEscape(v)}'`).join(',');
       sql += ` AND app_version IN (${versList})`;
@@ -182,12 +298,14 @@ function evaluateRules() {
       const message = (rule.message_template || 'Alarm: {count} events in {window}m').replace('{count}', rows.length).replace('{window}', rule.window_min).replace('{last_error}', lastError || 'n/a').replace('{apps}', Array.from(apps).join(',') || 'n/a');
       const alarm = { rule_id: rule.id, rule_name: rule.name, severity: rule.severity, message, count: rows.length, window_min: rule.window_min, last_error: lastError, fired_at: new Date(now).toISOString(), channels: rule.channels, sample_events: rows.slice(0, 5).map(r => ({ time: r.created_at, user: r.user_id, name: r.name, app_version: r.app_version })) };
       dedup[sig] = now;
+      if (!integrationsCache.has(rule.user_id)) integrationsCache.set(rule.user_id, getUserIntegrations(rule.user_id));
+      const integrations = integrationsCache.get(rule.user_id);
       for (const ch of rule.channels) {
         if (ch === 'telegram') fireTelegram(integrations.telegram, alarm);
         else if (ch === 'slack') fireSlack(integrations.slack, alarm);
         else if (ch === 'webhook') fireWebhook(integrations.webhook, alarm);
       }
-      fs.appendFileSync(ALARMS_LOG, JSON.stringify(alarm) + '\n');
+      insertAlarm(rule.user_id, alarm);
     }
   }
   saveDedup(dedup);
@@ -246,6 +364,8 @@ const server = http.createServer(async (req, res) => {
     const token = makeToken();
     const expires = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
     sqliteExec(PULSEFY_DB, `INSERT INTO sessions(token, user_id, created_at, expires_at) VALUES('${token}', ${user.id}, '${now}', '${expires}');`);
+    seedDefaultRulesForUser(user.id);
+    seedDefaultIntegrationsForUser(user.id);
     res.setHeader('Set-Cookie', `pulsefy_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 3600}`);
     return sendJson(res, 200, { ok: true, user: { id: user.id, email, name } });
   }
@@ -359,39 +479,33 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, { ok: true, rows, sinceMin });
   }
 
-  if (p === '/api/rules' && method === 'GET') return sendJson(res, 200, { ok: true, rules: loadRules() });
+  if (p === '/api/rules' && method === 'GET') return sendJson(res, 200, { ok: true, rules: getUserRules(req._user.id) });
   if (p === '/api/rules' && method === 'POST') {
     const body = await readBody(req);
-    const rules = loadRules();
-    body.id = body.id || ('rule-' + Date.now());
-    body.created_at = body.created_at || new Date().toISOString();
-    rules.push(body); writeJson(RULES_FILE, rules);
-    return sendJson(res, 200, { ok: true, rule: body });
+    const rule = insertRule(req._user.id, body);
+    return sendJson(res, 200, { ok: true, rule });
   }
   const ruleIdMatch = p.match(/^\/api\/rules\/([^\/]+)$/);
   if (ruleIdMatch && method === 'PUT') {
     const body = await readBody(req);
-    const rules = loadRules();
-    const idx = rules.findIndex(r => r.id === ruleIdMatch[1]);
-    if (idx < 0) return sendJson(res, 404, { ok: false, error: 'not found' });
-    rules[idx] = Object.assign({}, rules[idx], body, { id: rules[idx].id });
-    writeJson(RULES_FILE, rules);
-    return sendJson(res, 200, { ok: true, rule: rules[idx] });
+    const rule = updateRule(req._user.id, ruleIdMatch[1], body);
+    if (!rule) return sendJson(res, 404, { ok: false, error: 'not found' });
+    return sendJson(res, 200, { ok: true, rule });
   }
   if (ruleIdMatch && method === 'DELETE') {
-    writeJson(RULES_FILE, loadRules().filter(r => r.id !== ruleIdMatch[1]));
+    deleteRule(req._user.id, ruleIdMatch[1]);
     return sendJson(res, 200, { ok: true });
   }
 
-  if (p === '/api/integrations' && method === 'GET') return sendJson(res, 200, { ok: true, integrations: loadIntegrations() });
+  if (p === '/api/integrations' && method === 'GET') return sendJson(res, 200, { ok: true, integrations: getUserIntegrations(req._user.id) });
   if (p === '/api/integrations' && method === 'PUT') {
     const body = await readBody(req);
-    writeJson(INTEGRATIONS_FILE, body);
-    return sendJson(res, 200, { ok: true, integrations: body });
+    const integrations = saveUserIntegrations(req._user.id, body);
+    return sendJson(res, 200, { ok: true, integrations });
   }
   if (p === '/api/integrations/test' && method === 'POST') {
     const body = await readBody(req);
-    const cfg = loadIntegrations();
+    const cfg = getUserIntegrations(req._user.id);
     const testAlarm = { rule_name: 'Test integration', severity: 'green', message: 'pulsefy.tools test mesajı', fired_at: new Date().toISOString() };
     if (body.channel === 'telegram') fireTelegram(cfg.telegram, testAlarm);
     else if (body.channel === 'slack') fireSlack(cfg.slack, testAlarm);
@@ -400,11 +514,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (p === '/api/alarms' && method === 'GET') {
-    try {
-      const raw = fs.existsSync(ALARMS_LOG) ? fs.readFileSync(ALARMS_LOG, 'utf8') : '';
-      const lines = raw.split('\n').filter(Boolean).slice(-100).reverse();
-      return sendJson(res, 200, { ok: true, alarms: lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean) });
-    } catch (e) { return sendJson(res, 500, { ok: false, error: e.message }); }
+    try { return sendJson(res, 200, { ok: true, alarms: getUserAlarms(req._user.id, 100) }); }
+    catch (e) { return sendJson(res, 500, { ok: false, error: e.message }); }
   }
 
   // ============ Pages ============
