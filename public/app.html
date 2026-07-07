@@ -117,6 +117,13 @@
   .feed-row .app{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .feed-row .time{color:var(--muted-2)}
 
+  .suggest-card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:18px;margin-bottom:14px}
+  .suggest-card .pr-badge{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:3px 8px;border-radius:6px;flex-shrink:0}
+  .suggest-card .body{flex:1;min-width:0}
+  .suggest-card .name{font-weight:600;font-size:15.5px}
+  .suggest-card .why{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#9BA0A9;margin-top:7px}
+  .suggest-card .why b{color:var(--ink);font-weight:400}
+  .suggest-card .actions{display:flex;gap:8px;flex-shrink:0}
   .rule-card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:20px;margin-bottom:14px}
   .rule-card .rule-body{flex:1;min-width:0}
   .rule-card .rule-title-row{display:flex;align-items:center;gap:11px}
@@ -290,6 +297,23 @@
       </div>
     </div>
 
+    <!-- SUGGESTED ALERTS -->
+    <div id="tab-suggested" class="tab" style="display:none">
+      <div id="suggested-list"></div>
+    </div>
+
+    <!-- FUNNELS -->
+    <div id="tab-funnels" class="tab" style="display:none">
+      <div class="chips" id="funnel-chips"></div>
+      <div class="panel">
+        <div class="title" style="margin-bottom:4px">
+          <h3 id="funnel-title">Activation funnel</h3>
+          <div class="legend"><span id="funnel-window">24h window</span></div>
+        </div>
+        <div class="funnel-list" id="funnel-steps"></div>
+      </div>
+    </div>
+
     <!-- RULES -->
     <div id="tab-rules" class="tab" style="display:none">
       <div id="rules-list"></div>
@@ -413,6 +437,8 @@ async function logout(){ await fetch('/api/auth/logout',{method:'POST'}); locati
 const NAV_ITEMS = [
   {key:'overview', label:'Overview', icon:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'},
   {key:'feed', label:'Live feed', icon:'<path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5"/>'},
+  {key:'suggested', label:'Suggested alerts', icon:'<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>'},
+  {key:'funnels', label:'Funnels', icon:'<path d="M3 4h18l-7 8v6l-4 2v-8z"/>'},
   {key:'rules', label:'Rules', icon:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>'},
   {key:'alerts', label:'Alerts', icon:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>'},
   {key:'integrations', label:'Integrations', icon:'<path d="M18 17h-6a3 3 0 0 1 0-6h6M8 9H3"/><circle cx="18" cy="17" r="3"/><circle cx="6" cy="9" r="3"/>'},
@@ -420,6 +446,8 @@ const NAV_ITEMS = [
 const PAGE_TITLES = {
   overview:['Overview','Live pulse across all your apps'],
   feed:['Live feed','Every event, the moment it lands'],
+  suggested:['Suggested alerts','Rules we think you should turn on'],
+  funnels:['Funnels','Where users drop off, step by step'],
   rules:['Rules','Threshold · window · cooldown alerting'],
   alerts:['Fired alarms','Audit trail of every trigger'],
   integrations:['Integrations','Route alerts to the right channel'],
@@ -446,6 +474,8 @@ function setTab(t){
   renderNav();
   if (t==='overview') loadOverview();
   if (t==='feed') loadFeed();
+  if (t==='suggested') loadSuggested();
+  if (t==='funnels') loadFunnels();
   if (t==='rules') loadRules();
   if (t==='alerts') loadAlarms();
   if (t==='integrations') loadIntegrations();
@@ -605,6 +635,114 @@ function renderFeedRows(){
       <span class="time">${timeAgo(e.created_at)}</span>
     </div>`;
   }).join('') || '<div class="empty">No matching events</div>';
+}
+
+// ============ suggested alerts ============
+function dismissedSuggestions(){
+  try { return JSON.parse(localStorage.getItem('pf_dismissed_suggestions')||'[]'); } catch(e){ return []; }
+}
+function dismissSuggestion(key){
+  const d = dismissedSuggestions();
+  if (!d.includes(key)) { d.push(key); localStorage.setItem('pf_dismissed_suggestions', JSON.stringify(d)); }
+  loadSuggested();
+}
+async function loadSuggested(){
+  const container = document.getElementById('suggested-list');
+  container.innerHTML = '<div class="empty">Scanning recent events…</div>';
+  const [summary, rulesRes] = await Promise.all([
+    fetch('/api/events/summary?since_min=1440').then(r=>r.json()).catch(()=>({counts:[]})),
+    fetch('/api/rules').then(r=>r.json()).catch(()=>({rules:[]})),
+  ]);
+  const rules = rulesRes.rules || [];
+  const covered = new Set();
+  rules.forEach(r => (Array.isArray(r.events) ? r.events : String(r.events||'').split(',')).map(s=>String(s).trim()).filter(Boolean).forEach(e=>covered.add(e)));
+  const dismissed = dismissedSuggestions();
+  const counts = summary.rows || [];
+  const candidates = counts
+    .filter(c => /fail|error|crash|decline|expire|cancel/i.test(c.name))
+    .filter(c => !covered.has(c.name))
+    .filter(c => !dismissed.includes(c.name))
+    .filter(c => (c.n||0) >= 3)
+    .sort((a,b) => (b.n||0) - (a.n||0))
+    .slice(0, 8);
+
+  if (!candidates.length){
+    container.innerHTML = '<div class="empty">No new alert suggestions — either everything is covered by a rule, or things are quiet.</div>';
+    return;
+  }
+  container.innerHTML = candidates.map(c => {
+    const n = c.n || 0;
+    const severity = n >= 25 ? 'high' : (n >= 10 ? 'med' : 'low');
+    const color = severity==='high' ? 'var(--red)' : (severity==='med' ? 'var(--orange)' : 'var(--yellow)');
+    const threshold = Math.max(3, Math.round(n * 0.3));
+    return `<div class="suggest-card">
+      <div class="pr-badge" style="background:${color}22;color:${color}">${severity.toUpperCase()}</div>
+      <div class="body">
+        <div class="name">${escapeHtml(c.name)}</div>
+        <div class="why">Fired <b>${n}×</b> in the last 24h · no rule currently watches this event</div>
+      </div>
+      <div class="actions">
+        <button class="btn-ghost" style="padding:8px 14px;font-size:12.5px" onclick="dismissSuggestion('${escapeHtml(c.name)}')">Dismiss</button>
+        <button class="btn-primary" style="padding:8px 14px;font-size:12.5px" onclick="createFromSuggestion('${escapeHtml(c.name)}', ${threshold})">Create rule</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function createFromSuggestion(name, threshold){
+  setTab('rules');
+  setTimeout(() => {
+    editRule(null);
+    document.getElementById('r-name').value = name.replace(/[_-]/g,' ') + ' spike';
+    document.getElementById('r-events').value = name;
+    document.getElementById('r-window').value = 60;
+    document.getElementById('r-threshold').value = threshold;
+    document.getElementById('r-severity').value = threshold >= 15 ? 'red' : 'yellow';
+  }, 60);
+}
+
+// ============ funnels ============
+const FUNNEL_DEFS = {
+  activation: {label:'Activation funnel', steps:[
+    {label:'App opened', re:/open|launch|start/i},
+    {label:'Signed up', re:/signup|register|sign_up|identify/i},
+    {label:'Key action', re:/checkout|attempt|create|add_to/i},
+    {label:'Converted', re:/purchase|subscribe|success/i},
+  ]},
+  purchase: {label:'Purchase funnel', steps:[
+    {label:'Viewed offer', re:/paywall|offer_view|pricing_view/i},
+    {label:'Started checkout', re:/checkout|purchase_attempt|subscribe_attempt/i},
+    {label:'Purchased', re:/purchase_success|subscribe_success|purchased/i},
+  ]},
+};
+let currentFunnel = 'activation';
+function renderFunnelChips(){
+  const el = document.getElementById('funnel-chips');
+  el.innerHTML = Object.keys(FUNNEL_DEFS).map(k =>
+    `<div class="chip ${k===currentFunnel?'active':''}" onclick="setFunnel('${k}')">${escapeHtml(FUNNEL_DEFS[k].label)}</div>`
+  ).join('');
+}
+function setFunnel(k){ currentFunnel = k; loadFunnels(); }
+async function loadFunnels(){
+  renderFunnelChips();
+  const def = FUNNEL_DEFS[currentFunnel];
+  document.getElementById('funnel-title').textContent = def.label;
+  const stepsEl = document.getElementById('funnel-steps');
+  stepsEl.innerHTML = '<div class="empty">Crunching events…</div>';
+  const feed = await fetch('/api/events?since_min=1440&limit=1000').then(r=>r.json()).catch(()=>({rows:[]}));
+  const rows = feed.rows || [];
+  const userSets = def.steps.map(() => new Set());
+  for (const e of rows){
+    def.steps.forEach((s, i) => { if (s.re.test(e.name)) userSets[i].add(e.user_id||e.id); });
+  }
+  const base = Math.max(1, userSets[0].size);
+  stepsEl.innerHTML = def.steps.map((s, i) => {
+    const n = userSets[i].size;
+    const pct = Math.round((n / base) * 100);
+    return `<div class="funnel-step">
+      <div class="head"><span class="l">${escapeHtml(s.label)}</span><span class="r">${n} · ${pct}%</span></div>
+      <div class="funnel-bar"><div class="fill" style="width:${Math.min(100,pct)}%"></div></div>
+    </div>`;
+  }).join('') || '<div class="empty">No events yet for this funnel</div>';
 }
 
 // ============ rules ============
