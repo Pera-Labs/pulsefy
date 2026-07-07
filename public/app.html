@@ -4,278 +4,346 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>pulsefy — dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a12; --bg-2: #12121e; --panel: #1a1a26; --panel-hover: #22222e;
-    --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
-    --ink: #f8f8fc; --ink-2: #c8c8d4; --muted: #7c7c92;
-    --accent: #ff7a1f; --accent-2: #ffb84d; --accent-soft: #ff7a1f14;
-    --red: #ef4444; --red-soft: rgba(239,68,68,0.15);
-    --yellow: #eab308; --yellow-soft: rgba(234,179,8,0.15);
-    --green: #22c55e; --green-soft: rgba(34,197,94,0.15);
-    --blue: #3b82f6; --blue-soft: rgba(59,130,246,0.15);
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  :root{--accent:#C6F24E;--bg:#08090B;--panel:#101216;--panel-2:#0C0E12;--border:rgba(255,255,255,.08);--ink:#EAECEF;--ink-2:#B7BCC5;--muted:#767B85;--muted-2:#5D626B;--red:#FF6B78;--orange:#FF8A3D;--blue:#6FB5FF;--yellow:#E9C46A;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+  a{color:var(--accent);text-decoration:none;cursor:pointer}
+  a:hover{color:#dcff7a}
+  ::selection{background:var(--accent);color:var(--bg)}
+  .mono{font-family:'IBM Plex Mono',monospace}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  @keyframes blink{0%,60%{opacity:1}80%,100%{opacity:.25}}
+  @keyframes rowin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
 
-  /* app shell */
-  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  .shell{display:flex;min-height:100vh;background:radial-gradient(1000px 600px at 100% -10%,rgba(198,242,78,.05),transparent 60%),var(--bg)}
+  aside{width:236px;flex-shrink:0;border-right:1px solid var(--border);padding:22px 16px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+  aside .brand{display:flex;align-items:center;gap:11px;padding:0 8px 4px}
+  aside .brand .logo{width:30px;height:30px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 0 18px rgba(198,242,78,.5)}
+  aside .brand span{font-weight:700;font-size:18px;letter-spacing:-.3px}
+  aside .app-selector{margin-top:22px;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer}
+  aside .app-selector .app-avatar{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#6FB5FF,#2AABEE);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--bg)}
+  aside .app-selector .info{flex:1;min-width:0}
+  aside .app-selector .info .name{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  aside .app-selector .info .sub{font-size:10.5px;color:var(--muted)}
+  aside nav{margin-top:20px;display:flex;flex-direction:column;gap:3px}
+  aside .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14.5px;font-weight:500;color:var(--ink-2);transition:all .15s}
+  aside .nav-item:hover{color:var(--ink);background:rgba(255,255,255,.03)}
+  aside .nav-item.active{background:var(--accent);color:var(--bg)}
+  aside .nav-item svg{width:18px;height:18px;flex-shrink:0}
+  aside .footer{margin-top:auto;display:flex;flex-direction:column;gap:8px}
+  aside .footer .status-label{font-size:11px;color:var(--muted-2);padding:0 8px}
+  aside .user-card{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:10px 12px}
+  aside .user-card .avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#8fd12e);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--bg)}
+  aside .user-card .u-info{flex:1;min-width:0}
+  aside .user-card .u-info .u-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  aside .user-card .u-info .u-sub{font-size:10.5px;color:var(--muted)}
 
-  /* sidebar */
-  aside { background: var(--bg-2); border-right: 1px solid var(--border); padding: 20px 16px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-  aside .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 17px; padding: 6px 10px 20px; letter-spacing: -0.3px; }
-  aside .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.5} }
-  aside .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: var(--muted); cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.15s; text-decoration: none; }
-  aside .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--ink); }
-  aside .nav-item.active { background: var(--accent-soft); color: var(--accent); }
-  aside .nav-item .ic { width: 18px; text-align: center; font-size: 15px; }
-  aside .divider { height: 1px; background: var(--border); margin: 12px 0; }
-  aside .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 700; padding: 4px 12px; margin: 8px 0 4px; }
-  aside .footer { margin-top: auto; padding: 12px 12px 4px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
-  aside .footer .user { font-size: 13px; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
+  main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 30px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(8,9,11,.82);backdrop-filter:blur(12px);z-index:10}
+  .topbar h1{font-size:22px;font-weight:700;letter-spacing:-.5px}
+  .topbar .subtitle{font-size:13px;color:var(--muted);margin-top:2px}
+  .topbar .actions{display:flex;align-items:center;gap:12px}
+  .search-pill{display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 13px;width:230px;font-size:12.5px;color:var(--muted-2)}
+  .search-pill input{background:transparent;border:0;color:var(--ink);outline:0;flex:1;font-family:inherit;font-size:12.5px;width:100%}
+  .search-pill input::placeholder{color:var(--muted-2)}
+  .pulse-badge{display:flex;align-items:center;gap:8px;background:rgba(198,242,78,.10);border:1px solid rgba(198,242,78,.25);border-radius:10px;padding:8px 13px;font-size:12.5px;color:var(--accent)}
+  .pulse-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:blink 1.3s infinite}
+  .btn-primary{background:var(--accent);color:var(--bg);font-weight:600;font-size:13.5px;padding:9px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;border:0;font-family:inherit}
+  .btn-primary:hover{background:#dcff7a}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--border);font-weight:600;font-size:13.5px;padding:9px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:inherit}
+  .btn-ghost:hover{border-color:var(--ink-2);background:rgba(255,255,255,.03)}
+  .btn-danger{background:rgba(255,107,120,.12);color:var(--red);border:1px solid rgba(255,107,120,.3);font-weight:600;font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit}
+  .btn-danger:hover{background:var(--red);color:#fff}
 
-  /* main */
-  main { padding: 32px 40px; overflow-x: auto; }
-  .page-hdr { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; gap: 20px; flex-wrap: wrap; }
-  .page-hdr .left h1 { margin: 0 0 4px; font-size: 26px; font-weight: 800; letter-spacing: -0.6px; }
-  .page-hdr .left .sub { color: var(--muted); font-size: 14px; }
-  .page-hdr .right { display: flex; gap: 10px; align-items: center; }
+  .content{padding:26px 30px 40px;flex:1;animation:fadein .2s ease-out}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .grid-1-6-1{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-top:16px}
+  .grid-1-1{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .stat{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:15px;padding:18px 20px}
+  .stat .label{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)}
+  .stat .value{font-size:30px;font-weight:700;letter-spacing:-.7px;margin-top:8px}
+  .stat .delta{font-size:12.5px;margin-top:5px;color:var(--accent)}
+  .stat .delta.warn{color:var(--orange)}
+  .stat .delta.bad{color:var(--red)}
+  .panel{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;padding:22px;overflow:hidden}
+  .panel .title{display:flex;align-items:center;justify-content:space-between}
+  .panel .title h3{font-weight:600;font-size:16px}
+  .legend{display:flex;gap:16px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:4px}
 
-  /* status pill (SSE state) */
-  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
-  .pill-live { background: var(--green-soft); color: var(--green); }
-  .pill-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 1.5s infinite; }
-  .pill-off { background: var(--yellow-soft); color: var(--yellow); }
+  .funnel-list{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+  .funnel-step .head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+  .funnel-step .head .l{color:var(--ink-2)}
+  .funnel-step .head .r{font-family:'IBM Plex Mono',monospace;color:var(--muted)}
+  .funnel-bar{height:12px;border-radius:6px;background:rgba(255,255,255,.05);overflow:hidden}
+  .funnel-bar .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),#8fd12e)}
 
-  /* stats */
-  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
-  .stat { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; transition: border-color 0.15s; }
-  .stat:hover { border-color: var(--border-strong); }
-  .stat .label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-  .stat .value { font-size: 26px; font-weight: 800; letter-spacing: -0.6px; font-variant-numeric: tabular-nums; }
-  .stat .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .top-event-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,.05)}
+  .top-event-row:first-child{border-top:0}
+  .top-event-row .dot{width:8px;height:8px;border-radius:50%}
+  .top-event-row .name{font-family:'IBM Plex Mono',monospace;font-size:13px;flex:1}
+  .top-event-row .count{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted)}
+  .top-event-row .barwrap{width:90px;height:6px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+  .top-event-row .barwrap .b{height:100%}
 
-  /* panel */
-  .panel { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
-  .panel-hdr { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .panel-hdr h3 { margin: 0; font-size: 14px; font-weight: 700; }
-  .panel-body { padding: 20px; }
-  .panel-controls { display: flex; gap: 8px; align-items: center; }
+  .alert-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid rgba(255,255,255,.05)}
+  .alert-row:first-child{border-top:0}
+  .alert-row .icon-box{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .alert-row .body{flex:1;min-width:0}
+  .alert-row .body .t{font-size:13.5px;font-weight:500}
+  .alert-row .body .d{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)}
+  .alert-row .when{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted-2)}
 
-  /* buttons */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 0; cursor: pointer; transition: all 0.15s; font-family: inherit; }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-primary:hover { background: var(--accent-2); color: var(--bg); }
-  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--ink); }
-  .btn-ghost:hover { border-color: var(--ink-2); background: rgba(255,255,255,0.03); }
-  .btn-danger { background: var(--red-soft); color: var(--red); }
-  .btn-danger:hover { background: var(--red); color: white; }
-  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .chips{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .chip{font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:7px 14px;border-radius:9px;cursor:pointer;border:1px solid var(--border);color:var(--ink-2);background:transparent;transition:all .15s;font-family:'IBM Plex Mono',monospace}
+  .chip:hover{border-color:rgba(255,255,255,.2)}
+  .chip.active{color:var(--bg);background:var(--accent);border-color:var(--accent)}
 
-  /* input */
-  input, select, textarea { background: var(--bg); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 8px; padding: 8px 12px; font-family: inherit; font-size: 13px; width: 100%; transition: border-color 0.15s; }
-  input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--accent); }
-  label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.08em; }
-  .field { margin-bottom: 14px; }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .feed-table{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  .feed-head{font-family:'IBM Plex Mono',monospace;display:grid;grid-template-columns:180px 1fr 130px 100px 80px;gap:12px;padding:12px 20px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)}
+  .feed-row{font-family:'IBM Plex Mono',monospace;display:grid;grid-template-columns:180px 1fr 130px 100px 80px;gap:12px;padding:13px 20px;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,.045);align-items:center;animation:rowin .3s both}
+  .feed-row .ev{display:flex;align-items:center;gap:8px}
+  .feed-row .ev .d{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .feed-row .props{color:#9BA0A9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .feed-row .user{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .feed-row .app{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .feed-row .time{color:var(--muted-2)}
 
-  /* filters */
-  .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .filters input, .filters select { width: auto; min-width: 140px; }
+  .rule-card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:20px;margin-bottom:14px}
+  .rule-card .rule-body{flex:1;min-width:0}
+  .rule-card .rule-title-row{display:flex;align-items:center;gap:11px}
+  .rule-card .rule-name{font-weight:600;font-size:16px}
+  .rule-card .sev{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:3px 8px;border-radius:6px}
+  .rule-card .rule-cond{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#9BA0A9;margin-top:8px}
+  .rule-card .rule-cond b{color:var(--ink);font-weight:400}
+  .rule-card .channels{display:flex;align-items:center;gap:9px}
+  .rule-card .ch-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+  .rule-card .fired{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);width:96px;text-align:right}
+  .toggle{width:44px;height:25px;border-radius:13px;cursor:pointer;padding:3px;transition:background .2s;flex-shrink:0;background:rgba(255,255,255,.12)}
+  .toggle.on{background:var(--accent)}
+  .toggle .knob{width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .2s}
+  .toggle.on .knob{transform:translateX(19px)}
 
-  /* table */
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { padding: 10px 20px; text-align: left; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
-  th { font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10.5px; background: rgba(255,255,255,0.02); }
-  tbody tr:hover { background: rgba(255,255,255,0.02); }
-  td.mono { font-family: 'SF Mono', ui-monospace, Consolas, monospace; font-size: 12px; }
-  td.small { color: var(--muted); font-size: 11.5px; }
+  .alerts-table{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  .alerts-head{font-family:'IBM Plex Mono',monospace;display:grid;grid-template-columns:34px 1fr 130px 140px 90px;gap:14px;padding:12px 20px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)}
+  .alerts-row{display:grid;grid-template-columns:34px 1fr 130px 140px 90px;gap:14px;padding:15px 20px;border-bottom:1px solid rgba(255,255,255,.045);align-items:center}
+  .alerts-row .body .t{font-size:14px;font-weight:500}
+  .alerts-row .body .s{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .alerts-row .trig{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+  .alerts-row .ch{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#9BA0A9}
+  .alerts-row .when{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted-2)}
 
-  /* badge */
-  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .badge-red { background: var(--red-soft); color: var(--red); }
-  .badge-yellow { background: var(--yellow-soft); color: var(--yellow); }
-  .badge-green { background: var(--green-soft); color: var(--green); }
-  .badge-blue { background: var(--blue-soft); color: var(--blue); }
-  .badge-gray { background: rgba(255,255,255,0.06); color: var(--muted); }
+  .int-card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;padding:24px}
+  .int-card .icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+  .int-card .name{font-weight:600;font-size:17px;margin-top:16px}
+  .int-card .desc{color:#9BA0A9;font-size:13.5px;margin-top:6px;line-height:1.5}
+  .int-card .status{font-family:'IBM Plex Mono',monospace;margin-top:16px;font-size:11.5px;display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:8px}
+  .int-card .status.connected{color:var(--accent);background:rgba(198,242,78,.1);border:1px solid rgba(198,242,78,.25)}
+  .int-card .status.connected .d{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .int-card .status.empty{color:var(--muted);border:1px solid var(--border);cursor:pointer}
+  .int-config{margin-top:16px;display:none}
+  .int-config.open{display:block}
+  .int-config .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .int-config .field{margin-bottom:12px}
+  .int-config label{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:5px}
+  .int-config input{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+  .int-config input:focus{outline:0;border-color:var(--accent)}
+  .int-config .actions{display:flex;gap:8px;margin-top:14px}
 
-  /* rules grid */
-  .rules { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
-  .rule-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: border-color 0.15s; }
-  .rule-card:hover { border-color: var(--border-strong); }
-  .rule-card h4 { margin: 0 0 8px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .rule-card .rule-desc { color: var(--muted); font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
-  .rule-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 12px 0; border-top: 1px solid var(--border); }
-  .rule-meta .m { display: flex; flex-direction: column; gap: 2px; }
-  .rule-meta .m span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
-  .rule-meta .m b { color: var(--ink); font-weight: 600; font-size: 13px; }
-  .rule-actions { display: flex; gap: 6px; margin-top: 12px; }
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;animation:fadein .2s}
+  .modal-bg.active{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+  .modal h3{margin:0 0 20px;font-size:18px;font-weight:700;letter-spacing:-.3px}
+  .modal .field{margin-bottom:14px}
+  .modal label{font-family:'IBM Plex Mono',monospace;display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
+  .modal input, .modal select, .modal textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:13px}
+  .modal input:focus, .modal select:focus, .modal textarea:focus{outline:0;border-color:var(--accent)}
+  .modal .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .modal .toggle-row{display:flex;gap:16px;padding-top:4px}
+  .modal .toggle-row label{display:inline-flex;align-items:center;gap:6px;font-family:inherit;color:var(--ink);cursor:pointer}
 
-  /* modal */
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-  .modal-bg.active { display: flex; }
-  .modal { background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: 14px; padding: 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
-  .modal h3 { margin: 0 0 20px; font-size: 18px; font-weight: 700; }
+  .empty{padding:60px 20px;text-align:center;color:var(--muted)}
+  .empty h4{color:var(--ink);font-size:16px;font-weight:700;margin:0 0 6px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel);color:var(--ink);padding:12px 20px;border-radius:10px;border:1px solid var(--border);z-index:200;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 
-  .empty { padding: 60px 20px; text-align: center; color: var(--muted); }
-  .empty h4 { color: var(--ink); font-size: 16px; font-weight: 700; margin: 0 0 6px; }
-
-  .toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
-  .toggle input { width: auto; margin: 0; }
-
-  /* tabs (top) */
-  #events-body tr { animation: slideIn 0.25s ease-out; }
-  @keyframes slideIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
-
-  @media (max-width: 900px) {
-    .app { grid-template-columns: 1fr; }
-    aside { position: relative; height: auto; flex-direction: row; overflow-x: auto; padding: 12px; }
-    aside .nav-item { flex: 0 0 auto; }
-    aside .footer, aside .section-label, aside .divider { display: none; }
-    main { padding: 20px; }
+  @media(max-width:900px){
+    .shell{grid-template-columns:1fr}
+    aside{position:relative;height:auto;flex-direction:row;overflow-x:auto;padding:12px;width:100%}
+    aside .nav-item{flex:0 0 auto}
+    aside .brand{display:none}
+    aside .app-selector, aside .footer{display:none}
+    .content{padding:20px}
+    .grid-4, .grid-1-6-1, .grid-1-1, .grid-3{grid-template-columns:1fr}
+    .topbar{padding:14px 20px}
+    .topbar .search-pill{display:none}
   }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="shell">
 
 <aside>
-  <div class="brand"><span class="dot"></span>pulsefy</div>
-  <a class="nav-item active" data-tab="feed" onclick="setTab('feed')"><span class="ic">📊</span><span>Feed</span></a>
-  <a class="nav-item" data-tab="rules" onclick="setTab('rules')"><span class="ic">🚨</span><span>Rules</span></a>
-  <a class="nav-item" data-tab="alarms" onclick="setTab('alarms')"><span class="ic">🔔</span><span>Alarms</span></a>
-  <a class="nav-item" data-tab="integrations" onclick="setTab('integrations')"><span class="ic">🔌</span><span>Integrations</span></a>
-  <div class="divider"></div>
-  <div class="section-label">Account</div>
-  <a class="nav-item" onclick="logout()"><span class="ic">→</span><span>Sign out</span></a>
+  <div class="brand">
+    <div class="logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#08090B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2.5-7 4 15 3-9 2 4h4.5"/></svg>
+    </div>
+    <span>Pulsefy</span>
+  </div>
+
+  <div class="app-selector" id="app-selector">
+    <div class="app-avatar" id="app-avatar">·</div>
+    <div class="info"><div class="name" id="app-name">Loading…</div><div class="sub mono" id="app-sub">—</div></div>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#767B85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+  </div>
+
+  <nav id="nav"></nav>
+
   <div class="footer">
-    <div class="user" id="user-name">…</div>
-    <div id="user-email">…</div>
+    <div class="status-label mono">STATUS · all systems live</div>
+    <div class="user-card">
+      <div class="avatar" id="user-avatar">·</div>
+      <div class="u-info"><div class="u-name" id="user-name">Loading…</div><div class="u-sub mono" id="user-sub">—</div></div>
+    </div>
+    <div style="padding:0 8px;font-size:12px;color:var(--muted);cursor:pointer" onclick="logout()">Sign out</div>
   </div>
 </aside>
 
 <main>
-
-<!-- FEED -->
-<section id="tab-feed">
-  <div class="page-hdr">
-    <div class="left">
-      <h1>Live event feed</h1>
-      <div class="sub">Every event from your apps, streaming in real time.</div>
+  <div class="topbar">
+    <div>
+      <h1 id="page-title">Overview</h1>
+      <p class="subtitle" id="page-sub">Live pulse across all your apps</p>
     </div>
-    <div class="right">
-      <span class="pill pill-live" id="conn">Live · connected</span>
-      <select id="feed-since" style="width:auto;min-width:130px" onchange="loadEvents()">
-        <option value="60">Last 1h</option>
-        <option value="360">Last 6h</option>
-        <option value="1440" selected>Last 24h</option>
-        <option value="4320">Last 3d</option>
-      </select>
+    <div class="actions">
+      <div class="search-pill">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#767B85" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="global-search" placeholder="Search events…"/>
+      </div>
+      <div class="pulse-badge"><span class="dot"></span><span id="pulse-rate">— /min</span></div>
+      <button class="btn-primary" onclick="setTab('rules');setTimeout(()=>editRule(null),100)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New rule
+      </button>
     </div>
   </div>
 
-  <div class="stats" id="stats"></div>
+  <div class="content">
 
-  <div class="panel">
-    <div class="panel-hdr">
-      <h3>Events</h3>
-      <div class="filters">
-        <input id="filter-name" placeholder="Event name…" style="width:160px"/>
-        <input id="filter-version" placeholder="App version" style="width:120px"/>
-        <input id="filter-user" placeholder="User id" style="width:160px"/>
-        <button class="btn btn-primary btn-sm" onclick="loadEvents()">Apply</button>
-        <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Clear</button>
+    <!-- OVERVIEW -->
+    <div id="tab-overview" class="tab">
+      <div class="grid-4" id="stats"></div>
+      <div class="grid-1-6-1">
+        <div class="panel">
+          <div class="title">
+            <h3>Events over time</h3>
+            <div class="legend"><span style="color:var(--accent)">● success</span><span style="color:var(--red)">● failed</span><span>24h</span></div>
+          </div>
+          <svg viewBox="0 0 560 220" width="100%" height="220" style="margin-top:16px" preserveAspectRatio="none" id="timeline-svg">
+            <defs>
+              <linearGradient id="tl-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="rgba(198,242,78,.22)"/>
+                <stop offset="1" stop-color="rgba(198,242,78,0)"/>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="55" x2="560" y2="55" stroke="rgba(255,255,255,.05)"/>
+            <line x1="0" y1="110" x2="560" y2="110" stroke="rgba(255,255,255,.05)"/>
+            <line x1="0" y1="165" x2="560" y2="165" stroke="rgba(255,255,255,.05)"/>
+            <path id="tl-area" fill="url(#tl-grad)"/>
+            <path id="tl-line" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 5px rgba(198,242,78,.5))"/>
+            <path id="tl-fail" fill="none" stroke="var(--red)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 5"/>
+          </svg>
+        </div>
+        <div class="panel">
+          <h3 style="font-weight:600;font-size:16px">Top events (24h)</h3>
+          <div id="top-events" style="margin-top:14px"></div>
+        </div>
+      </div>
+      <div class="grid-1-1">
+        <div class="panel">
+          <h3 style="font-weight:600;font-size:16px;margin-bottom:14px">Live recent</h3>
+          <div id="overview-live"></div>
+        </div>
+        <div class="panel">
+          <div class="title" style="margin-bottom:14px">
+            <h3>Recent alerts</h3>
+            <a onclick="setTab('alerts')" style="font-size:13px">View all →</a>
+          </div>
+          <div id="recent-alerts"></div>
+        </div>
       </div>
     </div>
-    <div style="overflow-x:auto">
-      <table>
-        <thead><tr><th style="width:110px">Time</th><th style="width:180px">Event</th><th style="width:80px">Version</th><th style="width:70px">Country</th><th>User</th><th>Props</th></tr></thead>
-        <tbody id="events-body"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
 
-<!-- RULES -->
-<section id="tab-rules" style="display:none">
-  <div class="page-hdr">
-    <div class="left">
-      <h1>Alert rules</h1>
-      <div class="sub">Threshold + window + cooldown. Trigger the channels you care about.</div>
-    </div>
-    <div class="right">
-      <button class="btn btn-primary" onclick="editRule(null)">+ New rule</button>
-    </div>
-  </div>
-  <div class="rules" id="rules-grid"></div>
-</section>
-
-<!-- ALARMS -->
-<section id="tab-alarms" style="display:none">
-  <div class="page-hdr">
-    <div class="left">
-      <h1>Alarm history</h1>
-      <div class="sub">Every rule that fired, with sample events + channels dispatched.</div>
-    </div>
-  </div>
-  <div class="panel">
-    <div style="overflow-x:auto" id="alarms-list"></div>
-  </div>
-</section>
-
-<!-- INTEGRATIONS -->
-<section id="tab-integrations" style="display:none">
-  <div class="page-hdr">
-    <div class="left">
-      <h1>Integrations</h1>
-      <div class="sub">Configure destinations for alerts. Each rule picks its channels.</div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-hdr"><h3>Telegram</h3></div>
-    <div class="panel-body">
-      <div class="row2">
-        <div class="field"><label>Bot Token</label><input id="tg-token" placeholder="123456:ABCDEF..." type="password"/></div>
-        <div class="field"><label>Chat ID</label><input id="tg-chat" placeholder="-1001234567890"/></div>
-      </div>
-      <label class="toggle"><input type="checkbox" id="tg-enabled"/> Enabled</label>
-      <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" onclick="saveIntegrations()">Save</button>
-        <button class="btn btn-ghost btn-sm" onclick="testIntegration('telegram')">Send test</button>
+    <!-- LIVE FEED -->
+    <div id="tab-feed" class="tab" style="display:none">
+      <div class="chips" id="feed-chips"></div>
+      <div class="feed-table">
+        <div class="feed-head"><span>EVENT</span><span>PROPERTIES</span><span>USER</span><span>APP · VER</span><span>TIME</span></div>
+        <div id="feed-body"></div>
       </div>
     </div>
-  </div>
 
-  <div class="panel">
-    <div class="panel-hdr"><h3>Slack</h3></div>
-    <div class="panel-body">
-      <div class="field"><label>Incoming Webhook URL</label><input id="sl-webhook" placeholder="https://hooks.slack.com/services/..."/></div>
-      <label class="toggle"><input type="checkbox" id="sl-enabled"/> Enabled</label>
-      <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" onclick="saveIntegrations()">Save</button>
-        <button class="btn btn-ghost btn-sm" onclick="testIntegration('slack')">Send test</button>
+    <!-- RULES -->
+    <div id="tab-rules" class="tab" style="display:none">
+      <div id="rules-list"></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div id="tab-alerts" class="tab" style="display:none">
+      <div class="alerts-table">
+        <div class="alerts-head"><span></span><span>RULE</span><span>TRIGGER</span><span>CHANNEL</span><span>WHEN</span></div>
+        <div id="alerts-body"></div>
       </div>
     </div>
-  </div>
 
-  <div class="panel">
-    <div class="panel-hdr"><h3>Generic webhook</h3></div>
-    <div class="panel-body">
-      <div class="field"><label>URL</label><input id="wh-url" placeholder="https://your-endpoint.com/alarm"/></div>
-      <label class="toggle"><input type="checkbox" id="wh-enabled"/> Enabled</label>
-      <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" onclick="saveIntegrations()">Save</button>
-        <button class="btn btn-ghost btn-sm" onclick="testIntegration('webhook')">Send test</button>
+    <!-- INTEGRATIONS -->
+    <div id="tab-integrations" class="tab" style="display:none">
+      <div class="grid-3">
+        <div class="int-card">
+          <div class="icon" style="background:#2AABEE"><svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M9.8 15.6 9.6 19c.4 0 .6-.2.8-.4l2-1.9 4.1 3c.8.4 1.3.2 1.5-.7l2.7-12.6c.3-1.1-.4-1.6-1.1-1.3L3.4 10.3c-1.1.4-1.1 1-.2 1.3l4.3 1.3 9.9-6.2c.5-.3.9-.1.5.2z"/></svg></div>
+          <div class="name">Telegram</div>
+          <div class="desc">Bot pings to any chat or channel.</div>
+          <div id="tg-status" class="status empty">+ CONFIGURE</div>
+          <div class="int-config" id="tg-config">
+            <div class="field"><label>BOT TOKEN</label><input id="tg-token" type="password" placeholder="123456:ABCDEF..."/></div>
+            <div class="field"><label>CHAT ID</label><input id="tg-chat" placeholder="-1001234567890"/></div>
+            <div class="field toggle-row"><label><input type="checkbox" id="tg-enabled"/> Enabled</label></div>
+            <div class="actions"><button class="btn-primary" onclick="saveIntegrations()">Save</button><button class="btn-ghost" onclick="testIntegration('telegram')">Test</button></div>
+          </div>
+        </div>
+        <div class="int-card">
+          <div class="icon" style="background:#fff"><svg width="24" height="24" viewBox="0 0 24 24"><path fill="#36C5F0" d="M5.1 15.2a2.5 2.5 0 1 1-2.5-2.5h2.5z"/><path fill="#2EB67D" d="M8.8 15.2a2.5 2.5 0 1 1 5 0v6.3a2.5 2.5 0 1 1-5 0z"/><path fill="#ECB22E" d="M8.8 5.1a2.5 2.5 0 1 1 2.5-2.5v2.5z"/><path fill="#E01E5A" d="M8.8 8.8a2.5 2.5 0 1 1 0 5H2.5a2.5 2.5 0 1 1 0-5z"/></svg></div>
+          <div class="name">Slack</div>
+          <div class="desc">Post to any channel per rule.</div>
+          <div id="sl-status" class="status empty">+ CONFIGURE</div>
+          <div class="int-config" id="sl-config">
+            <div class="field"><label>INCOMING WEBHOOK URL</label><input id="sl-webhook" placeholder="https://hooks.slack.com/..."/></div>
+            <div class="field toggle-row"><label><input type="checkbox" id="sl-enabled"/> Enabled</label></div>
+            <div class="actions"><button class="btn-primary" onclick="saveIntegrations()">Save</button><button class="btn-ghost" onclick="testIntegration('slack')">Test</button></div>
+          </div>
+        </div>
+        <div class="int-card">
+          <div class="icon" style="background:rgba(198,242,78,.12);border:1px solid rgba(198,242,78,.25);color:var(--accent)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.66 0-3.01-1.34-3.01-3s1.35-3 3.01-3H18M8 8.98H2.01"/><circle cx="18" cy="16.98" r="3"/><circle cx="6" cy="8.98" r="3"/></svg></div>
+          <div class="name">Webhook</div>
+          <div class="desc">POST alert payload to your endpoint.</div>
+          <div id="wh-status" class="status empty">+ ADD ENDPOINT</div>
+          <div class="int-config" id="wh-config">
+            <div class="field"><label>URL</label><input id="wh-url" placeholder="https://your-endpoint.com/alarm"/></div>
+            <div class="field toggle-row"><label><input type="checkbox" id="wh-enabled"/> Enabled</label></div>
+            <div class="actions"><button class="btn-primary" onclick="saveIntegrations()">Save</button><button class="btn-ghost" onclick="testIntegration('webhook')">Test</button></div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</section>
 
+  </div>
 </main>
 </div>
 
@@ -284,175 +352,302 @@
   <div class="modal">
     <h3 id="modal-title">Edit rule</h3>
     <input type="hidden" id="r-id"/>
-    <div class="field"><label>Name</label><input id="r-name"/></div>
-    <div class="field"><label>Description</label><input id="r-desc"/></div>
-    <div class="field"><label>Events (comma-separated)</label><input id="r-events" placeholder="subscribe_fail, paywall_offerings_error"/></div>
+    <div class="field"><label>NAME</label><input id="r-name"/></div>
+    <div class="field"><label>DESCRIPTION</label><input id="r-desc"/></div>
+    <div class="field"><label>EVENTS (comma-separated)</label><input id="r-events" placeholder="subscribe_fail, paywall_offerings_error"/></div>
     <div class="row2">
-      <div class="field"><label>Window (min)</label><input id="r-window" type="number" value="10"/></div>
-      <div class="field"><label>Threshold (count)</label><input id="r-threshold" type="number" value="3"/></div>
+      <div class="field"><label>WINDOW (min)</label><input id="r-window" type="number" value="10"/></div>
+      <div class="field"><label>THRESHOLD (count)</label><input id="r-threshold" type="number" value="3"/></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Cooldown (min)</label><input id="r-cooldown" type="number" value="30"/></div>
-      <div class="field"><label>Severity</label><select id="r-severity"><option value="red">Red (critical)</option><option value="yellow">Yellow (warning)</option><option value="green">Green (info)</option></select></div>
-    </div>
-    <div class="field"><label>App versions (comma, empty = all)</label><input id="r-versions" placeholder="1.1.0, 1.0.9"/></div>
-    <div class="field"><label>Filter: error contains</label><input id="r-error-contains" placeholder="receipt not valid"/></div>
-    <div class="field">
-      <label>Channels</label>
-      <div style="display:flex;gap:16px;padding-top:4px">
-        <label class="toggle"><input type="checkbox" id="r-ch-telegram"/> Telegram</label>
-        <label class="toggle"><input type="checkbox" id="r-ch-slack"/> Slack</label>
-        <label class="toggle"><input type="checkbox" id="r-ch-webhook"/> Webhook</label>
+      <div class="field"><label>COOLDOWN (min)</label><input id="r-cooldown" type="number" value="30"/></div>
+      <div class="field"><label>SEVERITY</label>
+        <select id="r-severity">
+          <option value="red">Critical</option>
+          <option value="yellow">Warning</option>
+          <option value="green">Info</option>
+        </select>
       </div>
     </div>
-    <div class="field"><label>Message template</label><textarea id="r-template" rows="2" placeholder="🔴 {count} events in {window}m — {last_error}"></textarea></div>
-    <label class="toggle" style="margin:8px 0 20px"><input type="checkbox" id="r-enabled" checked/> Enabled</label>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeRule()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveRule()">Save rule</button>
+    <div class="field"><label>APP VERSIONS (comma, empty = all)</label><input id="r-versions" placeholder="1.1.0, 1.0.9"/></div>
+    <div class="field"><label>FILTER: error contains</label><input id="r-error-contains" placeholder="receipt not valid"/></div>
+    <div class="field"><label>CHANNELS</label>
+      <div class="toggle-row">
+        <label><input type="checkbox" id="r-ch-telegram"/> Telegram</label>
+        <label><input type="checkbox" id="r-ch-slack"/> Slack</label>
+        <label><input type="checkbox" id="r-ch-webhook"/> Webhook</label>
+      </div>
+    </div>
+    <div class="field"><label>MESSAGE TEMPLATE</label><textarea id="r-template" rows="2" placeholder="🔴 {count} events in {window}m — {last_error}"></textarea></div>
+    <div class="field toggle-row"><label><input type="checkbox" id="r-enabled" checked/> Enabled</label></div>
+    <div class="actions">
+      <button class="btn-ghost" onclick="closeRule()">Cancel</button>
+      <button class="btn-primary" onclick="saveRule()">Save rule</button>
     </div>
   </div>
 </div>
 
 <script>
-let RULES = [];
-let ME = null;
+let ME=null, APPS=[], RULES=[], RECENT_COUNT=0, EVENT_MINUTE_RATE=0;
+const A = '#C6F24E';
 
-// ===== auth check =====
-async function loadMe() {
+// ============ auth ============
+async function loadMe(){
   const r = await fetch('/api/auth/me').then(r=>r.json()).catch(()=>({ok:false}));
-  if (!r.ok) { window.location.href='/login'; return; }
-  ME = r.user;
+  if (!r.ok) { location.href='/login'; return; }
+  ME = r.user; APPS = r.apps || [];
+  const initials = (ME.name || ME.email).split(/[\s@]/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || 'U';
+  document.getElementById('user-avatar').textContent = initials;
   document.getElementById('user-name').textContent = ME.name || ME.email.split('@')[0];
-  document.getElementById('user-email').textContent = ME.email;
-}
-async function logout() {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/';
-}
-
-// ===== tabs =====
-function setTab(tab) {
-  document.querySelectorAll('.nav-item').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
-  ['feed','rules','alarms','integrations'].forEach(t => document.getElementById('tab-'+t).style.display = (t===tab)?'block':'none');
-  if (tab==='feed') { loadEvents(); }
-  if (tab==='rules') loadRules();
-  if (tab==='alarms') loadAlarms();
-  if (tab==='integrations') loadIntegrations();
-}
-
-// ===== feed =====
-async function loadEvents() {
-  const since = document.getElementById('feed-since').value;
-  const qs = new URLSearchParams({ since_min: since });
-  const nm = document.getElementById('filter-name').value.trim(); if (nm) qs.set('name', nm);
-  const av = document.getElementById('filter-version').value.trim(); if (av) qs.set('app_version', av);
-  const uid = document.getElementById('filter-user').value.trim(); if (uid) qs.set('user_id', uid);
-  const r = await fetch('/api/events?' + qs.toString()).then(r=>r.json());
-  const tbody = document.getElementById('events-body');
-  tbody.innerHTML = '';
-  for (const e of r.rows) renderEvent(e, tbody, false);
-  loadStats(since);
-}
-
-function renderEvent(e, tbody, prepend) {
-  const tr = document.createElement('tr');
-  const timeShort = (e.created_at || '').replace('T',' ').slice(5, 19);
-  const propsPreview = String(e.props || '').slice(0, 180);
-  tr.innerHTML =
-    '<td class="mono small">'+timeShort+'</td>' +
-    '<td><span class="badge '+badgeForEvent(e.name)+'">'+e.name+'</span></td>' +
-    '<td class="mono small">'+(e.app_version||'—')+'</td>' +
-    '<td class="mono small">'+(e.country||'—')+'</td>' +
-    '<td class="mono small">'+String(e.user_id||'').slice(0,32)+'</td>' +
-    '<td class="mono small">'+esc(propsPreview)+'</td>';
-  if (prepend) tbody.insertBefore(tr, tbody.firstChild);
-  else tbody.appendChild(tr);
-  while (tbody.children.length > 200) tbody.removeChild(tbody.lastChild);
-}
-
-function badgeForEvent(name) {
-  if (/fail|error/i.test(name)) return 'badge-red';
-  if (/cancel|dismiss/i.test(name)) return 'badge-yellow';
-  if (/success/i.test(name)) return 'badge-green';
-  if (/attempt|view|open/i.test(name)) return 'badge-blue';
-  return 'badge-gray';
-}
-
-async function loadStats(since) {
-  const r = await fetch('/api/events/summary?since_min=' + since).then(r=>r.json());
-  const grid = document.getElementById('stats');
-  grid.innerHTML = '';
-  for (const s of r.rows.slice(0, 8)) {
-    const div = document.createElement('div');
-    div.className = 'stat';
-    div.innerHTML = '<div class="label">'+esc(s.name)+'</div><div class="value">'+s.n.toLocaleString()+'</div><div class="sub">'+s.users+' unique users</div>';
-    grid.appendChild(div);
+  document.getElementById('user-sub').textContent = ME.email;
+  if (APPS.length) {
+    const first = APPS[0];
+    document.getElementById('app-name').textContent = first.display_name;
+    document.getElementById('app-avatar').textContent = first.display_name[0].toUpperCase();
+    document.getElementById('app-sub').textContent = APPS.length + ' app' + (APPS.length>1?'s':'');
   }
 }
+async function logout(){ await fetch('/api/auth/logout',{method:'POST'}); location.href='/'; }
 
-function resetFilters() {
-  document.getElementById('filter-name').value = '';
-  document.getElementById('filter-version').value = '';
-  document.getElementById('filter-user').value = '';
-  loadEvents();
+// ============ nav ============
+const NAV_ITEMS = [
+  {key:'overview', label:'Overview', icon:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'},
+  {key:'feed', label:'Live feed', icon:'<path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5"/>'},
+  {key:'rules', label:'Rules', icon:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>'},
+  {key:'alerts', label:'Alerts', icon:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>'},
+  {key:'integrations', label:'Integrations', icon:'<path d="M18 17h-6a3 3 0 0 1 0-6h6M8 9H3"/><circle cx="18" cy="17" r="3"/><circle cx="6" cy="9" r="3"/>'},
+];
+const PAGE_TITLES = {
+  overview:['Overview','Live pulse across all your apps'],
+  feed:['Live feed','Every event, the moment it lands'],
+  rules:['Rules','Threshold · window · cooldown alerting'],
+  alerts:['Fired alarms','Audit trail of every trigger'],
+  integrations:['Integrations','Route alerts to the right channel'],
+};
+let currentTab='overview';
+function renderNav(){
+  const nav = document.getElementById('nav');
+  nav.innerHTML='';
+  for (const n of NAV_ITEMS){
+    const div=document.createElement('div');
+    div.className='nav-item'+(n.key===currentTab?' active':'');
+    div.onclick=()=>setTab(n.key);
+    div.innerHTML=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${n.icon}</svg><span>${n.label}</span>`;
+    nav.appendChild(div);
+  }
+}
+function setTab(t){
+  currentTab=t;
+  document.querySelectorAll('.tab').forEach(x=>x.style.display='none');
+  document.getElementById('tab-'+t).style.display='block';
+  const [title,sub]=PAGE_TITLES[t];
+  document.getElementById('page-title').textContent=title;
+  document.getElementById('page-sub').textContent=sub;
+  renderNav();
+  if (t==='overview') loadOverview();
+  if (t==='feed') loadFeed();
+  if (t==='rules') loadRules();
+  if (t==='alerts') loadAlarms();
+  if (t==='integrations') loadIntegrations();
 }
 
-// ===== SSE =====
-function connectSSE() {
-  const es = new EventSource('/api/events/live');
-  es.onmessage = (e) => {
-    const pill = document.getElementById('conn');
-    pill.textContent = 'Live · connected';
-    pill.classList.remove('pill-off'); pill.classList.add('pill-live');
-    try {
-      const ev = JSON.parse(e.data);
-      const tbody = document.getElementById('events-body');
-      if (document.getElementById('tab-feed').style.display !== 'none') {
-        renderEvent(ev, tbody, true);
-      }
-    } catch {}
-  };
-  es.onerror = () => {
-    const pill = document.getElementById('conn');
-    pill.textContent = 'Reconnecting…';
-    pill.classList.remove('pill-live'); pill.classList.add('pill-off');
-  };
+// ============ overview ============
+const EVENT_COLOR = (name)=>{
+  if (/fail|error|crash/i.test(name)) return '#FF6B78';
+  if (/cancel|dismiss/i.test(name)) return '#FF8A3D';
+  if (/success/i.test(name)) return A;
+  if (/attempt|view|open/i.test(name)) return '#6FB5FF';
+  return '#E9C46A';
+};
+
+async function loadOverview(){
+  const r24 = await fetch('/api/events/summary?since_min=1440').then(r=>r.json());
+  const rY = await fetch('/api/events/summary?since_min=2880').then(r=>r.json());
+  const totalToday = (r24.rows||[]).reduce((s,x)=>s+x.n,0);
+  const totalYesterday = (rY.rows||[]).reduce((s,x)=>s+x.n,0) - totalToday;
+  const activeUsers = new Set();
+  const failName = (r24.rows||[]).filter(x=>/fail|error|crash/i.test(x.name));
+  const failCount = failName.reduce((s,x)=>s+x.n,0);
+  const failRate = totalToday ? (failCount/totalToday*100) : 0;
+  const uniqueUsers = (r24.rows||[]).reduce((s,x)=>Math.max(s,x.users||0),0);
+
+  const alarmsR = await fetch('/api/alarms').then(r=>r.json());
+  const alarms24 = (alarmsR.alarms||[]).filter(a=>{
+    const t = new Date(a.fired_at).getTime();
+    return Date.now() - t < 86400000;
+  });
+  const critical = alarms24.filter(a=>a.severity==='red').length;
+
+  const dTotal = totalYesterday ? Math.round((totalToday - totalYesterday) / Math.max(1,totalYesterday) * 100) : 0;
+  const stats = [
+    {label:'Events today', value: totalToday.toLocaleString(), delta: (dTotal>=0?'▲ ':'▼ ')+Math.abs(dTotal)+'% vs yesterday', class:''},
+    {label:'Unique users', value: uniqueUsers.toLocaleString(), delta:'24h window', class:''},
+    {label:'Fail rate', value: failRate.toFixed(1)+'%', delta: failRate<1?'healthy':'watch closely', class: failRate>3?'bad':(failRate>1?'warn':'')},
+    {label:'Alerts fired', value: String(alarms24.length), delta: critical ? critical+' critical' : 'all clear', class: critical?'warn':''},
+  ];
+  document.getElementById('stats').innerHTML = stats.map(s=>`
+    <div class="stat">
+      <div class="label">${s.label}</div>
+      <div class="value">${s.value}</div>
+      <div class="delta ${s.class}">${s.delta}</div>
+    </div>
+  `).join('');
+
+  // Top events (top 5 by count)
+  const topEvents = (r24.rows||[]).slice(0,5);
+  const maxN = topEvents[0]?.n || 1;
+  document.getElementById('top-events').innerHTML = topEvents.map(e=>`
+    <div class="top-event-row">
+      <span class="dot" style="background:${EVENT_COLOR(e.name)};box-shadow:0 0 7px ${EVENT_COLOR(e.name)}"></span>
+      <span class="name">${escapeHtml(e.name)}</span>
+      <span class="count">${e.n.toLocaleString()}</span>
+      <div class="barwrap"><div class="b" style="background:${EVENT_COLOR(e.name)};width:${Math.round(e.n/maxN*100)}%"></div></div>
+    </div>
+  `).join('') || '<div class="empty" style="padding:20px">No events yet</div>';
+
+  // Overview live: last 6 events
+  const feed = await fetch('/api/events?since_min=1440&limit=6').then(r=>r.json());
+  document.getElementById('overview-live').innerHTML = (feed.rows||[]).map(e=>`
+    <div class="alert-row">
+      <div class="icon-box" style="background:${EVENT_COLOR(e.name)}22;color:${EVENT_COLOR(e.name)}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+      </div>
+      <div class="body"><div class="t">${escapeHtml(e.name)}</div><div class="d">${escapeHtml(String(e.props||'').slice(0,60))}</div></div>
+      <span class="when">${timeAgo(e.created_at)}</span>
+    </div>
+  `).join('') || '<div class="empty" style="padding:20px">No events</div>';
+
+  // Recent alerts (last 4)
+  document.getElementById('recent-alerts').innerHTML = (alarmsR.alarms||[]).slice(0,4).map(a=>{
+    const c = a.severity==='red' ? '#FF6B78' : a.severity==='yellow' ? '#FF8A3D' : A;
+    return `
+      <div class="alert-row">
+        <div class="icon-box" style="background:${c}22;color:${c}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+        </div>
+        <div class="body"><div class="t">${escapeHtml(a.rule_name||'')}</div><div class="d">${escapeHtml((a.message||'').slice(0,60))}</div></div>
+        <span class="when">${timeAgo(a.fired_at)}</span>
+      </div>
+    `;
+  }).join('') || '<div class="empty" style="padding:20px">No alerts fired</div>';
+
+  // Timeline: bucket events per hour last 24h
+  await renderTimeline(feed.rows);
 }
 
-// ===== rules =====
-async function loadRules() {
+async function renderTimeline(){
+  const buckets = 24;
+  const now = Date.now();
+  const successB = new Array(buckets).fill(0);
+  const failB = new Array(buckets).fill(0);
+  // fetch summary of buckets — we approximate by reusing feed events pulled and bucket them
+  const feed = await fetch('/api/events?since_min=1440&limit=500').then(r=>r.json()).catch(()=>({rows:[]}));
+  for (const e of (feed.rows||[])){
+    const t = new Date(e.created_at).getTime();
+    const idx = Math.floor((now - t) / (60*60*1000));
+    if (idx < 0 || idx >= buckets) continue;
+    const b = buckets-1-idx;
+    if (/fail|error|crash/i.test(e.name)) failB[b]++;
+    else successB[b]++;
+  }
+  const w = 560, h = 220;
+  const maxV = Math.max(1, ...successB, ...failB);
+  const points = (arr) => arr.map((v,i)=>{
+    const x = (i / (buckets-1)) * w;
+    const y = h - (v / maxV) * (h - 30) - 12;
+    return `${x.toFixed(1)} ${y.toFixed(1)}`;
+  });
+  const succPath = 'M ' + points(successB).join(' L ');
+  const failPath = 'M ' + points(failB).join(' L ');
+  const areaPath = succPath + ` L ${w} ${h} L 0 ${h} Z`;
+  document.getElementById('tl-line').setAttribute('d', succPath);
+  document.getElementById('tl-fail').setAttribute('d', failPath);
+  document.getElementById('tl-area').setAttribute('d', areaPath);
+}
+
+// ============ feed ============
+const FEED_FILTERS = [
+  {key:'all', label:'All events'},
+  {key:'fail', label:'Failures'},
+  {key:'purchase', label:'Purchases'},
+  {key:'lifecycle', label:'Lifecycle'},
+];
+let currentFilter='all';
+function renderChips(){
+  document.getElementById('feed-chips').innerHTML = FEED_FILTERS.map(f=>`
+    <div class="chip ${f.key===currentFilter?'active':''}" onclick="setFilter('${f.key}')">${f.label}</div>
+  `).join('');
+}
+function setFilter(k){ currentFilter=k; renderChips(); renderFeedRows(); }
+
+let FEED_EVENTS=[];
+async function loadFeed(){
+  renderChips();
+  const r = await fetch('/api/events?since_min=1440&limit=200').then(r=>r.json());
+  FEED_EVENTS = r.rows||[];
+  renderFeedRows();
+}
+function categorize(name){
+  if (/fail|error|crash/i.test(name)) return 'fail';
+  if (/subscribe|purchase|checkout/i.test(name)) return 'purchase';
+  if (/open|view|dismiss|cancel|identify/i.test(name)) return 'lifecycle';
+  return 'other';
+}
+function renderFeedRows(){
+  const rows = FEED_EVENTS.filter(e => currentFilter==='all' || categorize(e.name)===currentFilter);
+  document.getElementById('feed-body').innerHTML = rows.map(e=>{
+    const c = EVENT_COLOR(e.name);
+    return `<div class="feed-row">
+      <span class="ev" style="color:${c}"><span class="d" style="background:${c};box-shadow:0 0 6px ${c}"></span>${escapeHtml(e.name)}</span>
+      <span class="props">${escapeHtml(String(e.props||'').slice(0,120))}</span>
+      <span class="user">${escapeHtml(String(e.user_id||'').slice(-16))}</span>
+      <span class="app">${escapeHtml(e.app_version||'—')}</span>
+      <span class="time">${timeAgo(e.created_at)}</span>
+    </div>`;
+  }).join('') || '<div class="empty">No matching events</div>';
+}
+
+// ============ rules ============
+async function loadRules(){
   const r = await fetch('/api/rules').then(r=>r.json());
-  RULES = r.rules || [];
-  const grid = document.getElementById('rules-grid');
-  grid.innerHTML = '';
-  if (!RULES.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><h4>No rules yet</h4><div>Click New rule to set up your first alert.</div></div>'; return; }
-  for (const rule of RULES) {
-    const card = document.createElement('div');
-    card.className = 'rule-card';
-    const sev = rule.severity==='red'?'badge-red':rule.severity==='yellow'?'badge-yellow':'badge-green';
-    card.innerHTML =
-      '<h4>'+esc(rule.name)+' <span class="badge '+sev+'">'+rule.severity+'</span></h4>' +
-      '<div class="rule-desc">'+esc(rule.description || '')+'</div>' +
-      '<div class="rule-meta">' +
-        '<div class="m"><span>Events</span><b>'+esc((rule.events||[]).join(', '))+'</b></div>' +
-        '<div class="m"><span>Window</span><b>'+rule.window_min+'m</b></div>' +
-        '<div class="m"><span>Threshold</span><b>≥'+rule.threshold+'</b></div>' +
-        '<div class="m"><span>Cooldown</span><b>'+rule.cooldown_min+'m</b></div>' +
-        '<div class="m"><span>Channels</span><b>'+esc((rule.channels||[]).join(', ') || '—')+'</b></div>' +
-        '<div class="m"><span>Status</span><b style="color:'+(rule.enabled?'var(--green)':'var(--muted)')+'">'+(rule.enabled?'ACTIVE':'DISABLED')+'</b></div>' +
-      '</div>' +
-      '<div class="rule-actions">' +
-        '<button class="btn btn-primary btn-sm" onclick="editRule(\''+rule.id+'\')">Edit</button>' +
-        '<button class="btn btn-ghost btn-sm" onclick="toggleRule(\''+rule.id+'\')">'+(rule.enabled?'Disable':'Enable')+'</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteRule(\''+rule.id+'\')">Delete</button>' +
-      '</div>';
-    grid.appendChild(card);
+  RULES = r.rules||[];
+  const container = document.getElementById('rules-list');
+  if (!RULES.length){
+    container.innerHTML = '<div class="empty"><h4>No rules yet</h4><div>Click New rule to set up your first alert.</div></div>';
+    return;
   }
+  container.innerHTML = RULES.map(rule => {
+    const sev = rule.severity==='red' ? 'CRITICAL' : rule.severity==='yellow' ? 'WARNING' : 'INFO';
+    const sevColor = rule.severity==='red' ? '#FF6B78' : rule.severity==='yellow' ? '#FF8A3D' : '#6FB5FF';
+    const sevBg = rule.severity==='red' ? 'rgba(255,77,94,.15)' : rule.severity==='yellow' ? 'rgba(255,138,61,.15)' : 'rgba(111,181,255,.15)';
+    const evColor = rule.events && rule.events.length ? EVENT_COLOR(rule.events[0]) : '#6FB5FF';
+    const channels = (rule.channels||[]).map(ch=>{
+      if (ch==='telegram') return `<div class="ch-icon" style="background:#2AABEE"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M9.8 15.6 9.6 19c.4 0 .6-.2.8-.4l2-1.9 4.1 3c.8.4 1.3.2 1.5-.7l2.7-12.6c.3-1.1-.4-1.6-1.1-1.3L3.4 10.3c-1.1.4-1.1 1-.2 1.3l4.3 1.3 9.9-6.2c.5-.3.9-.1.5.2z"/></svg></div>`;
+      if (ch==='slack') return `<div class="ch-icon" style="background:#fff"><svg width="15" height="15" viewBox="0 0 24 24"><path fill="#36C5F0" d="M5.1 15.2a2.5 2.5 0 1 1-2.5-2.5h2.5z"/><path fill="#2EB67D" d="M8.8 15.2a2.5 2.5 0 1 1 5 0v6.3a2.5 2.5 0 1 1-5 0z"/><path fill="#ECB22E" d="M8.8 5.1a2.5 2.5 0 1 1 2.5-2.5v2.5z"/><path fill="#E01E5A" d="M8.8 8.8a2.5 2.5 0 1 1 0 5H2.5a2.5 2.5 0 1 1 0-5z"/></svg></div>`;
+      return `<div class="ch-icon" style="background:rgba(198,242,78,.14)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M18 17h-6a3 3 0 0 1 0-6h6M8 9H3"/><circle cx="18" cy="17" r="2.6"/><circle cx="6" cy="9" r="2.6"/></svg></div>`;
+    }).join('');
+    return `
+      <div class="rule-card">
+        <div class="rule-body">
+          <div class="rule-title-row">
+            <div class="rule-name">${escapeHtml(rule.name)}</div>
+            <span class="sev" style="background:${sevBg};color:${sevColor}">${sev}</span>
+          </div>
+          <div class="rule-cond">
+            when <span style="color:${evColor}">${escapeHtml((rule.events||[]).join(', '))}</span> · count &gt; <b>${rule.threshold}</b> in <b>${rule.window_min} min</b> · cooldown <b>${rule.cooldown_min} min</b>
+          </div>
+        </div>
+        <div class="channels">${channels || '<span style="font-family:IBM Plex Mono, monospace;font-size:11px;color:var(--muted-2)">no ch</span>'}</div>
+        <div class="fired">enabled: ${rule.enabled?'yes':'no'}</div>
+        <div class="toggle ${rule.enabled?'on':''}" onclick="toggleRule('${rule.id}')"><div class="knob"></div></div>
+        <button class="btn-ghost" style="padding:6px 12px;font-size:12px" onclick="editRule('${rule.id}')">Edit</button>
+        <button class="btn-danger" onclick="deleteRule('${rule.id}')">Delete</button>
+      </div>
+    `;
+  }).join('');
 }
-
-function editRule(id) {
-  const rule = id ? RULES.find(r => r.id === id) : {};
+function editRule(id){
+  const rule = id ? RULES.find(r=>r.id===id) : {};
   document.getElementById('modal-title').textContent = id ? 'Edit rule' : 'New rule';
   document.getElementById('r-id').value = rule.id || '';
   document.getElementById('r-name').value = rule.name || '';
@@ -471,70 +666,67 @@ function editRule(id) {
   document.getElementById('r-enabled').checked = rule.enabled !== false;
   document.getElementById('modal-rule').classList.add('active');
 }
-
-function closeRule() { document.getElementById('modal-rule').classList.remove('active'); }
-
-async function saveRule() {
+function closeRule(){ document.getElementById('modal-rule').classList.remove('active'); }
+async function saveRule(){
   const id = document.getElementById('r-id').value;
   const body = {
     name: document.getElementById('r-name').value,
     description: document.getElementById('r-desc').value,
     events: document.getElementById('r-events').value.split(',').map(s=>s.trim()).filter(Boolean),
-    window_min: parseInt(document.getElementById('r-window').value, 10) || 10,
-    threshold: parseInt(document.getElementById('r-threshold').value, 10) || 1,
-    cooldown_min: parseInt(document.getElementById('r-cooldown').value, 10) || 30,
+    window_min: parseInt(document.getElementById('r-window').value,10) || 10,
+    threshold: parseInt(document.getElementById('r-threshold').value,10) || 1,
+    cooldown_min: parseInt(document.getElementById('r-cooldown').value,10) || 30,
     severity: document.getElementById('r-severity').value,
     app_versions: document.getElementById('r-versions').value.split(',').map(s=>s.trim()).filter(Boolean),
     filter_props: { error_contains: document.getElementById('r-error-contains').value },
-    channels: [
-      document.getElementById('r-ch-telegram').checked ? 'telegram' : null,
-      document.getElementById('r-ch-slack').checked ? 'slack' : null,
-      document.getElementById('r-ch-webhook').checked ? 'webhook' : null,
-    ].filter(Boolean),
+    channels: ['telegram','slack','webhook'].filter(ch=>document.getElementById('r-ch-'+ch).checked),
     message_template: document.getElementById('r-template').value,
     enabled: document.getElementById('r-enabled').checked,
   };
-  const url = id ? '/api/rules/' + encodeURIComponent(id) : '/api/rules';
-  const method = id ? 'PUT' : 'POST';
-  await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  closeRule();
+  const url = id ? '/api/rules/'+encodeURIComponent(id) : '/api/rules';
+  await fetch(url, { method: id?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  closeRule(); loadRules();
+}
+async function toggleRule(id){
+  const rule = RULES.find(r=>r.id===id); if (!rule) return;
+  await fetch('/api/rules/'+encodeURIComponent(id), { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled: !rule.enabled }) });
   loadRules();
 }
-
-async function toggleRule(id) {
-  const rule = RULES.find(r => r.id === id);
-  if (!rule) return;
-  await fetch('/api/rules/' + encodeURIComponent(id), { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: !rule.enabled }) });
-  loadRules();
-}
-
-async function deleteRule(id) {
+async function deleteRule(id){
   if (!confirm('Delete this rule?')) return;
-  await fetch('/api/rules/' + encodeURIComponent(id), { method: 'DELETE' });
+  await fetch('/api/rules/'+encodeURIComponent(id), { method:'DELETE' });
   loadRules();
 }
 
-// ===== alarms =====
-async function loadAlarms() {
+// ============ alarms ============
+async function loadAlarms(){
   const r = await fetch('/api/alarms').then(r=>r.json());
-  const el = document.getElementById('alarms-list');
-  if (!r.alarms || !r.alarms.length) { el.innerHTML = '<div class="empty"><h4>No alarms fired</h4><div>When a rule crosses its threshold, it lands here.</div></div>'; return; }
-  let html = '<table><thead><tr><th style="padding-left:20px">Time</th><th>Rule</th><th>Severity</th><th>Message</th><th style="text-align:right">Count</th><th style="padding-right:20px">Channels</th></tr></thead><tbody>';
-  for (const a of r.alarms) {
-    const sev = a.severity==='red'?'badge-red':a.severity==='yellow'?'badge-yellow':'badge-green';
-    html += '<tr><td class="mono small">'+(a.fired_at||'').replace('T',' ').slice(5,19)+'</td>' +
-      '<td>'+esc(a.rule_name||'')+'</td>' +
-      '<td><span class="badge '+sev+'">'+a.severity+'</span></td>' +
-      '<td>'+esc(a.message||'')+'</td>' +
-      '<td class="mono" style="text-align:right">'+(a.count||0)+'</td>' +
-      '<td class="mono small">'+esc((a.channels||[]).join(', '))+'</td></tr>';
+  const body = document.getElementById('alerts-body');
+  if (!r.alarms || !r.alarms.length){
+    body.innerHTML = '<div class="empty"><h4>No alarms fired</h4><div>When a rule crosses its threshold, it lands here.</div></div>';
+    return;
   }
-  html += '</tbody></table>';
-  el.innerHTML = html;
+  body.innerHTML = r.alarms.map(a=>{
+    const c = a.severity==='red' ? '#FF6B78' : a.severity==='yellow' ? '#FF8A3D' : A;
+    return `
+      <div class="alerts-row">
+        <div class="icon-box" style="background:${c}22;color:${c};width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+        </div>
+        <div class="body">
+          <div class="t">${escapeHtml(a.rule_name||'')}</div>
+          <div class="s">${escapeHtml((a.message||'').slice(0,80))}</div>
+        </div>
+        <div class="trig" style="color:${c}">${a.count} in ${a.window_min}m</div>
+        <div class="ch">${escapeHtml((a.channels||[]).join(', '))}</div>
+        <div class="when">${timeAgo(a.fired_at)}</div>
+      </div>
+    `;
+  }).join('');
 }
 
-// ===== integrations =====
-async function loadIntegrations() {
+// ============ integrations ============
+async function loadIntegrations(){
   const r = await fetch('/api/integrations').then(r=>r.json());
   const I = r.integrations || {};
   document.getElementById('tg-token').value = (I.telegram||{}).bot_token || '';
@@ -544,37 +736,77 @@ async function loadIntegrations() {
   document.getElementById('sl-enabled').checked = !!(I.slack||{}).enabled;
   document.getElementById('wh-url').value = (I.webhook||{}).url || '';
   document.getElementById('wh-enabled').checked = !!(I.webhook||{}).enabled;
-}
 
-async function saveIntegrations() {
+  // Show status pill
+  const setStatus = (id, connected) => {
+    const el = document.getElementById(id);
+    if (connected){ el.className='status connected'; el.innerHTML='<span class="d"></span>CONNECTED'; }
+    else{ el.className='status empty'; el.textContent='+ CONFIGURE'; }
+  };
+  setStatus('tg-status', !!(I.telegram||{}).enabled && (I.telegram||{}).bot_token);
+  setStatus('sl-status', !!(I.slack||{}).enabled && (I.slack||{}).webhook_url);
+  setStatus('wh-status', !!(I.webhook||{}).enabled && (I.webhook||{}).url);
+  // Always show config forms
+  document.querySelectorAll('.int-config').forEach(el=>el.classList.add('open'));
+}
+async function saveIntegrations(){
   const body = {
     telegram: { bot_token: document.getElementById('tg-token').value.trim(), chat_id: document.getElementById('tg-chat').value.trim(), enabled: document.getElementById('tg-enabled').checked },
     slack: { webhook_url: document.getElementById('sl-webhook').value.trim(), enabled: document.getElementById('sl-enabled').checked },
     webhook: { url: document.getElementById('wh-url').value.trim(), enabled: document.getElementById('wh-enabled').checked },
   };
-  await fetch('/api/integrations', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  await fetch('/api/integrations',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   toast('Saved');
+  loadIntegrations();
+}
+async function testIntegration(channel){
+  const r = await fetch('/api/integrations/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel})}).then(r=>r.json());
+  toast(r.ok ? 'Test sent to '+channel : 'Failed: '+(r.error||''));
 }
 
-async function testIntegration(channel) {
-  const r = await fetch('/api/integrations/test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ channel }) }).then(r=>r.json());
-  toast(r.ok ? 'Test sent to '+channel : 'Failed: ' + (r.error||''));
+// ============ SSE live ============
+let EV_TIMES = [];
+function connectSSE(){
+  const es = new EventSource('/api/events/live');
+  es.onmessage = (e) => {
+    try {
+      const ev = JSON.parse(e.data);
+      EV_TIMES.push(Date.now());
+      // window: last 60 seconds
+      const cutoff = Date.now() - 60000;
+      EV_TIMES = EV_TIMES.filter(t => t > cutoff);
+      document.getElementById('pulse-rate').textContent = EV_TIMES.length + ' /min';
+      if (currentTab === 'feed') {
+        FEED_EVENTS.unshift(ev);
+        if (FEED_EVENTS.length > 200) FEED_EVENTS.pop();
+        renderFeedRows();
+      }
+    } catch {}
+  };
 }
 
-function toast(msg) {
+// ============ helpers ============
+function escapeHtml(s){ return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+function timeAgo(iso){
+  const t = new Date(iso).getTime();
+  const s = Math.floor((Date.now()-t)/1000);
+  if (s < 60) return s+'s';
+  if (s < 3600) return Math.floor(s/60)+'m';
+  if (s < 86400) return Math.floor(s/3600)+'h';
+  return Math.floor(s/86400)+'d';
+}
+function toast(msg){
   const t = document.createElement('div');
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel);color:var(--ink);padding:12px 20px;border-radius:10px;border:1px solid var(--border-strong);z-index:200;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
+  t.className='toast'; t.textContent=msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2500);
+  setTimeout(()=>t.remove(), 2500);
 }
-
-function esc(s) { return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // init
-(async () => {
+(async ()=>{
   await loadMe();
-  loadEvents();
+  renderNav();
+  setTab('overview');
   connectSSE();
 })();
 </script>
